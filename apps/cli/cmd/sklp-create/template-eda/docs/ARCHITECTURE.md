@@ -56,7 +56,7 @@ working example — copy it, change the subject and the body of `Handle`.
 
 ## Observability seam
 
-`apps/core/observability` wraps `github.com/digstack/skalpai/packages/sdk-go`
+`apps/core/observability` wraps `github.com/lalternative/packages/skalpai/sdk-go`
 and configures OTEL traces, metrics, and logs exporters at boot. Disabled
 (no-op) when `SKALPAI_ENDPOINT` or `SKALPAI_API_KEY` are empty, so
 `go test ./...` and offline dev don't fight the SDK. The web app should

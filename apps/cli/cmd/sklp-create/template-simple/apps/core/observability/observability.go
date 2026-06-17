@@ -9,7 +9,7 @@ package observability
 import (
 	"context"
 
-	skalpai "github.com/digstack/skalpai/packages/sdk-go"
+	skalpai "github.com/lalternative/packages/skalpai/sdk-go"
 	"github.com/labstack/echo/v4"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 )

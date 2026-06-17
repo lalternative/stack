@@ -3,9 +3,9 @@ module app/core
 go 1.25.0
 
 require (
-	github.com/digstack/skalpai/packages/sdk-go v0.6.0
 	github.com/google/uuid v1.6.0
 	github.com/labstack/echo/v4 v4.12.0
+	github.com/lalternative/packages/skalpai/sdk-go v0.6.1
 	github.com/marcboeker/go-duckdb v1.8.3
 	github.com/swaggo/swag v1.16.6
 	go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho v0.56.0
