@@ -1,6 +1,6 @@
 # Architecture
 
-This bootstrap mirrors the skalpai layout so a new project lands on the same
+This stack mirrors the skalpai layout so a new project lands on the same
 mental model from day one.
 
 ## Layered backend (DDD)
@@ -34,11 +34,11 @@ and configures OTEL traces, metrics, and logs exporters at boot. Disabled
 (no-op) when `SKALPAI_ENDPOINT` or `SKALPAI_API_KEY` are empty, so
 `go test ./...` and offline dev don't fight the SDK. The web app should
 ship `@digstack/sdk-browser` for RUM (left for the consuming project to
-add — it's not in the bootstrap to avoid a forced dep).
+add — it's not in the stack to avoid a forced dep).
 
 ## sklp seam
 
-The bootstrap **uses** the host `sklp` CLI. `.sklp/dev.yaml` is the
+The stack **uses** the host `sklp` CLI. `.sklp/dev.yaml` is the
 declarative dev topology; `.sklp/tasks/*.yaml` are the CI/build/publish
 pipelines. New behavior goes into helpers/templates/codegen — not into
 new top-level YAML fields (skalpai convention).

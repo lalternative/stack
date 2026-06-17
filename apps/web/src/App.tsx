@@ -15,7 +15,7 @@ export function App() {
     <main className="mx-auto max-w-2xl p-6">
       <h1 className="text-2xl font-semibold tracking-tight">app</h1>
       <p className="mt-2 text-muted-foreground">
-        Skalpai-style bootstrap. Edit{" "}
+        Skalpai-style stack. Edit{" "}
         <code className="rounded bg-muted px-1.5 py-0.5 text-sm">src/App.tsx</code> to begin.
       </p>
       <ul className="mt-4 space-y-1">

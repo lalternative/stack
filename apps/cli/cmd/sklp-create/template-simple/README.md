@@ -1,6 +1,6 @@
 # app
 
-Skalpai-style application generated from the `bootstrap` template. Ships
+Skalpai-style application generated from the `stack` template. Ships
 with the `sklp` dev/CI/publish workflow, OTEL observability via skalpai
 sdk-go, a Go DDD backend (`apps/core`), a React + TanStack web app
 (`apps/web`).

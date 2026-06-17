@@ -48,7 +48,7 @@ func newStartCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "start <name>",
 		Short: "Scaffold a new skalpai-style project in ./<name>",
-		Long: `Create a new project from an embedded bootstrap template.
+		Long: `Create a new project from an embedded stack template.
 
 Two modes are available:
   --mode simple   Postgres + Echo REST (DDD CRUD)            [default]
@@ -307,7 +307,7 @@ function Home() {
     <main className="mx-auto max-w-2xl p-6 font-sans">
       <h1 className="text-2xl font-semibold tracking-tight">app</h1>
       <p className="mt-2 text-sm text-gray-600">
-        Skalpai-style bootstrap (SPA). Edit{" "}
+        Skalpai-style stack (SPA). Edit{" "}
         <code className="rounded bg-gray-100 px-1">src/routes/index.tsx</code> to
         begin.
       </p>

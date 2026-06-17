@@ -1,5 +1,5 @@
 {
-  "name": "app-bootstrap",
+  "name": "stack",
   "private": true,
   "packageManager": "pnpm@10.27.0",
   "engines": {

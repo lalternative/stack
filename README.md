@@ -1,6 +1,6 @@
-# bootstrap
+# stack
 
-Skalpai-style application bootstrap. A ready-to-run starter that gives a new
+Skalpai-style application stack. A ready-to-run starter that gives a new
 project everything skalpai has on day one — observability wired in, the `sklp`
 dev/CI/publish workflow, a Go DDD backend, a TanStack web app, and a project
 CLI.
@@ -12,7 +12,7 @@ spin up new projects from the embedded template.
 
 ```bash
 # Install the scaffolder once
-go install github.com/digstack/bootstrap/apps/cli/cmd/sklp-create@latest
+go install github.com/lalternative/stack/apps/cli/cmd/sklp-create@latest
 
 # Create a new project
 sklp-create start myapp

@@ -1,6 +1,6 @@
-# bootstrap
+# stack
 
-Skalpai-style application bootstrap. Generated from this template, each new
+Skalpai-style application stack. Generated from this template, each new
 app starts with the full skalpai dev workflow + observability already wired.
 
 ## Stack

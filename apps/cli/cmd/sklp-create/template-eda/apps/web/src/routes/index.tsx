@@ -21,7 +21,7 @@ function Home() {
     <main className="mx-auto max-w-2xl p-6 font-sans">
       <h1 className="text-2xl font-semibold tracking-tight">app</h1>
       <p className="mt-2 text-sm text-gray-600">
-        Skalpai-style bootstrap on TanStack Start. Edit{" "}
+        Skalpai-style stack on TanStack Start. Edit{" "}
         <code className="rounded bg-gray-100 px-1">src/routes/index.tsx</code> to
         begin.
       </p>

@@ -2,7 +2,7 @@ package main
 
 // @title           Core API
 // @version         0.1.0
-// @description     Bootstrap application core REST API.
+// @description     Stack application core REST API.
 // @BasePath        /api/v1
 // @securityDefinitions.apikey BearerAuth
 // @in header

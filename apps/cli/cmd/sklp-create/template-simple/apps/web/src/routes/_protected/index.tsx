@@ -38,7 +38,7 @@ function Home() {
         </button>
       </div>
       <p className="mt-2 text-sm text-gray-600">
-        Skalpai-style bootstrap on TanStack Start with better-auth. Edit{" "}
+        Skalpai-style stack on TanStack Start with better-auth. Edit{" "}
         <code className="rounded bg-gray-100 px-1">
           src/routes/_protected/index.tsx
         </code>{" "}

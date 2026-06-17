@@ -1,5 +1,5 @@
 // Command sklp-create scaffolds a new skalpai-style project from the
-// embedded bootstrap template.
+// embedded stack template.
 package main
 
 import (
