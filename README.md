@@ -54,7 +54,7 @@ Source of truth: `.sklp/dev.yaml` + `.sklp/tasks/*.yaml`.
 
 ## Observability
 
-`apps/core/observability/` wraps `github.com/digstack/skalpai/packages/sdk-go`
+`apps/core/observability/` wraps `github.com/lalternative/packages/skalpai/sdk-go`
 and configures OTEL traces + metrics + logs at boot. Traffic flows to the URL
 in `SKALPAI_ENDPOINT` (using `SKALPAI_API_KEY`). The wrapper is a no-op when
 either env var is empty, so `go test ./...` and offline dev work without
