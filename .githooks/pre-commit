@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Pre-commit gate — runs the same validators sklp uses in CI.
+# Enable once per clone: git config core.hooksPath .githooks
+set -euo pipefail
+
+if ! command -v sklp >/dev/null 2>&1; then
+  echo "pre-commit: sklp not on PATH — install it before committing." >&2
+  exit 1
+fi
+
+# Fast scoped run on staged paths only.
+sklp run ci --staged || {
+  echo "pre-commit: sklp run ci failed — fix above and re-commit." >&2
+  exit 1
+}

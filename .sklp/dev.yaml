@@ -1,0 +1,22 @@
+version: 1
+kind: devstack
+name: dev
+env_files:
+  - .env
+  - .env.local
+
+services:
+  core:
+    run: go run .
+    workdir: apps/core
+    ready:
+      http: http://localhost:4100/health
+      timeout: 90s
+
+  web:
+    run: pnpm --filter @app/web dev
+    depends_on:
+      - core
+    ready:
+      http: http://localhost:5273
+      timeout: 60s

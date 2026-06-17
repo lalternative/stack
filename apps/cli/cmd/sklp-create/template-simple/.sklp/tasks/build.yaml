@@ -1,0 +1,20 @@
+version: 1
+kind: pipeline
+name: build
+description: Build the core service binary and frontend bundles.
+
+tools:
+  go: "1.25.0"
+  node: "22.19.0"
+  pnpm: "10.27.0"
+
+steps:
+  - name: build-core
+    tools: [go]
+    run: |
+      mkdir -p bin
+      cd apps/core && go build -o ../../bin/core .
+
+  - name: build-web
+    tools: [node, pnpm]
+    run: pnpm --filter @app/web build

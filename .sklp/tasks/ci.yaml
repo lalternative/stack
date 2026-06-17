@@ -1,0 +1,78 @@
+version: 1
+kind: pipeline
+name: ci
+description: |
+  Lint + test each service whose files changed since base_ref. Scope
+  granularity is the service. The `shared` scope retests everything
+  on changes to .sklp/, root Dockerfiles, or workspace files.
+
+inputs:
+  base_ref:
+    type: string
+    required: false
+    default: origin/main
+
+tools:
+  go: "1.25.0"
+  node: "22.19.0"
+  pnpm: "10.27.0"
+
+scopes:
+  core:
+    - "apps/core/**"
+    - "Dockerfile"
+    - "go.work"
+    - "go.work.sum"
+  cli:
+    - "apps/cli/**"
+  web:
+    - "apps/web/**"
+    - "package.json"
+    - "pnpm-lock.yaml"
+    - "Dockerfile.web"
+  sdk:
+    - "apps/sdk/**"
+  shared:
+    - ".sklp/**"
+    - "Dockerfile"
+
+steps:
+  - name: branch-context
+    tools: []
+    run: |
+      git status --short
+      git branch --show-current
+
+  - name: test-core
+    scope: [core, shared]
+    tools: [go]
+    run: cd apps/core && go test ./...
+
+  - name: test-cli
+    scope: [cli, shared]
+    tools: [go]
+    run: cd apps/cli && go test ./...
+
+  - name: lint-web
+    scope: [web, shared]
+    tools: [node, pnpm]
+    run: pnpm --filter @app/web lint
+
+  - name: typecheck-web
+    scope: [web, shared]
+    tools: [node, pnpm]
+    run: pnpm --filter @app/web typecheck
+
+  - name: sdk-up-to-date
+    scope: [sdk, core, shared]
+    tools: [go, node, pnpm]
+    run: |
+      go install github.com/swaggo/swag/cmd/swag@latest
+      cd apps/core && swag init -g main.go --parseDependency --parseInternal -q
+      cd ../.. && pnpm --filter @app/sdk generate
+      git diff --exit-code -- apps/core/docs apps/sdk/src/generated
+
+  - name: sdk-build
+    scope: [sdk, core, shared]
+    tools: [node, pnpm]
+    run: pnpm --filter @app/sdk build

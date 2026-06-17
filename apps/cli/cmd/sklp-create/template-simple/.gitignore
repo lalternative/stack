@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.next/
+.tanstack/
+bin/
+apps/core/core
+data/
+*.duckdb
+.env
+.env.local
+.sklp/cache/
+.sklp/logs/
+.DS_Store

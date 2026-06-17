@@ -1,0 +1,69 @@
+version: 1
+kind: pipeline
+name: secops
+description: |
+  Security scanning pipeline — gitleaks (secrets), semgrep (SAST), govulncheck
+  (Go vulns), pnpm audit (JS vulns), trivy fs (misconfigurations).
+
+inputs:
+  base_ref:
+    type: string
+    required: false
+    default: origin/main
+
+tools:
+  go: "1.25.0"
+  node: "22.19.0"
+  pnpm: "10.27.0"
+  gitleaks: "8.18.4"
+  trivy: "0.70.0"
+  govulncheck: "1.1.4"
+  semgrep: "1.78.0"
+
+scopes:
+  go-code:
+    - "**/*.go"
+    - "go.work"
+    - "go.work.sum"
+    - "**/go.mod"
+    - "**/go.sum"
+  ts-code:
+    - "**/*.ts"
+    - "**/*.tsx"
+    - "**/*.js"
+    - "**/*.jsx"
+    - "package.json"
+    - "pnpm-lock.yaml"
+  shared:
+    - ".sklp/**"
+    - "Dockerfile*"
+
+steps:
+  - name: gitleaks
+    tools: [gitleaks]
+    run: gitleaks detect --source . --config .gitleaks.toml --no-banner --redact --exit-code 1
+
+  - name: semgrep
+    scope: [go-code, ts-code, shared]
+    tools: [semgrep]
+    run: |
+      semgrep scan \
+        --config=p/owasp-top-ten \
+        --config=p/golang \
+        --config=p/typescript \
+        --severity=ERROR --error --metrics=off
+
+  - name: govulncheck-core
+    scope: [go-code]
+    tools: [govulncheck]
+    run: govulncheck -C apps/core ./...
+
+  - name: pnpm-audit
+    scope: [ts-code]
+    tools: [node, pnpm]
+    run: pnpm audit --audit-level=high --prod
+
+  - name: trivy-fs-misconfig
+    scope: [shared, go-code, ts-code]
+    tools: [trivy]
+    run: trivy fs --scanners misconfig --severity HIGH,CRITICAL --exit-code 1 .
