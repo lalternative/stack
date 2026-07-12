@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/digstack/go-eda/pkg/consumer"
+	"github.com/lalternative/packages/go/eda/pkg/consumer"
 	"github.com/labstack/echo/v4"
 	emw "github.com/labstack/echo/v4/middleware"
 	"github.com/nats-io/nats.go"

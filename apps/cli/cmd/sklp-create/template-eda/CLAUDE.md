@@ -22,7 +22,7 @@ app starts with the full skalpai dev workflow + observability already wired.
 - Use `github.com/google/uuid` for IDs
 - JWT middleware extracts user via `middleware.GetUser(c)`
 - **Never hand-roll a JetStream consumer.** Consume integration events through
-  `github.com/digstack/go-eda/pkg/consumer` (`consumer.Run` + an
+  `github.com/lalternative/packages/go/eda/pkg/consumer` (`consumer.Run` + an
   `EventHandler`). It provides `Term`/`MaxDeliver`/`BackOff`/DLQ/heartbeat/
   idempotency/reconnect by default — you write only `Handle`. New handlers go
   under `apps/core/<context>/events/`; copy `project/events/` as the template.

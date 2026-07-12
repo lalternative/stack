@@ -52,7 +52,7 @@ func newStartCmd() *cobra.Command {
 
 Two modes are available:
   --mode simple   Postgres + Echo REST (DDD CRUD)            [default]
-  --mode eda      Postgres + NATS JetStream + go-eda (event-driven)
+  --mode eda      Postgres + NATS JetStream + eda lib (event-driven)
 
 The web app is built on TanStack Start. Choose how it renders:
   --render ssr    Server-rendered via Nitro                  [default]

@@ -29,7 +29,7 @@ lexical order at boot.
 
 ## Event-driven seam (durable consumers)
 
-Integration events are consumed through `github.com/digstack/go-eda/pkg/consumer`,
+Integration events are consumed through `github.com/lalternative/packages/go/eda/pkg/consumer`,
 **never** by hand-rolling a JetStream subscription. The brick owns every
 redelivery concern once, so handlers can't get them wrong:
 
