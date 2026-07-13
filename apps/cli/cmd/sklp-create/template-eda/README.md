@@ -16,13 +16,27 @@ sklp dev stack                      # boots core (4100) + web (5273)
 ## Layout
 
 ```
-.sklp/                 space.yaml + stack/dev.yaml + pipelines/{ci,build,publish,secops}.yaml
+.sklp/                 space.yaml + stack/dev.yaml + pipelines/{ci,build,generate,publish,secops}.yaml
 apps/
-  core/                Go 1.25 + Echo v4 + Postgres (DDD per bounded context)
+  core/                Go 1.25 + Echo v4 + Postgres + NATS (DDD per bounded context)
+  sdk/                 Typed TS client generated from the core OpenAPI (swag → orval → tsup)
   web/                 React 19 + TanStack Router + Vite
 infra/nginx/           Static bundle nginx config
 Dockerfile*            One per shipped image (core, web)
 ```
+
+## API SDK
+
+The core exposes an OpenAPI spec (swaggo annotations on the Echo handlers)
+and `apps/sdk` is a typed TypeScript client generated from it. The web app
+consumes it via the `@app/sdk` workspace package. Never hand-edit the
+generated client — annotate the handlers, then regenerate:
+
+```bash
+sklp run generate    # swag → apps/core/docs, orval → apps/sdk/src/generated, tsup → dist
+```
+
+`apps/core/docs` and `apps/sdk/src/generated` are checked in.
 
 ## Workflow
 
@@ -33,6 +47,7 @@ Source of truth: `.sklp/space.yaml` (runner recipe), `.sklp/stack/dev.yaml`
 |---|---|
 | `sklp dev stack` | Local supervisor — core + web |
 | `sklp run ci` | Lint + test impacted services |
+| `sklp run generate` | Regenerate OpenAPI spec + typed SDK (swag → orval → tsup) |
 | `sklp run build` | Build `bin/core` + web bundle |
 | `sklp run secops` | Security scan: gitleaks + semgrep + govulncheck + trivy |
 | `sklp run publish` | Build, scan (Trivy), push impacted images (main only) |

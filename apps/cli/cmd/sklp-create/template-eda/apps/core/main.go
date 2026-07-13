@@ -1,3 +1,11 @@
+// @title           Core API
+// @version         0.1.0
+// @description     Stack application core REST API.
+// @BasePath        /api/v1
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Pass `Bearer <token>`. JWT is verified by the gateway; the user id arrives as the X-User-Id header.
 package main
 
 import (

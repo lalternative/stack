@@ -12,7 +12,7 @@ app starts with the full skalpai dev workflow + observability already wired.
 - DDD per bounded context under `apps/core/<context>/`
 - Pattern: `domain/ → application/<usecase>/ → infrastructure/ → api.go + dto.go + bootstrap.go`
 - Database abstraction via `pkg/db.Executor` interface
-- File-based SQL migrations in `apps/core/migrations/duckdb/`
+- File-based SQL migrations in `apps/core/migrations/postgres/`
 - Observability wired at boot through `apps/core/observability` using `@digstack/sdk-go`
 
 ## Conventions
@@ -21,6 +21,9 @@ app starts with the full skalpai dev workflow + observability already wired.
 - Do NOT include `Co-Authored-By: Claude` or any Anthropic co-author
 - Use `github.com/google/uuid` for IDs
 - JWT middleware extracts user via `middleware.GetUser(c)`
+- The TS API client is generated, never hand-written: annotate Echo handlers
+  with swaggo `// @...`, then `sklp run generate` (swag → orval → tsup).
+  `apps/sdk/src/generated` and `apps/core/docs` are checked in.
 
 ## Feature / PR / Publish flow
 

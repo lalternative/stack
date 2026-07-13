@@ -10,6 +10,17 @@ import (
 	"app/core/project/application/list_projects"
 )
 
+// Create godoc
+// @Summary  Create a project
+// @Tags     projects
+// @Accept   json
+// @Produce  json
+// @Param    body  body      CreateRequest  true  "Project to create"
+// @Success  201   {object}  ProjectDTO
+// @Failure  400   {object}  echo.HTTPError
+// @Security BearerAuth
+// @Router   /projects [post]
+// @ID       createProject
 func (s *Service) Create(c echo.Context) error {
 	var req CreateRequest
 	if err := c.Bind(&req); err != nil {
@@ -23,6 +34,15 @@ func (s *Service) Create(c echo.Context) error {
 	return c.JSON(http.StatusCreated, toDTO(p))
 }
 
+// List godoc
+// @Summary  List projects owned by the caller
+// @Tags     projects
+// @Produce  json
+// @Success  200  {array}   ProjectDTO
+// @Failure  500  {object}  echo.HTTPError
+// @Security BearerAuth
+// @Router   /projects [get]
+// @ID       listProjects
 func (s *Service) List(c echo.Context) error {
 	owner, _ := uuid.Parse(c.Request().Header.Get("X-User-Id"))
 	ps, err := s.list.Handle(c.Request().Context(), list_projects.Query{OwnerID: owner})

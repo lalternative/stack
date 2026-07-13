@@ -28,6 +28,8 @@ scopes:
     - "package.json"
     - "pnpm-lock.yaml"
     - "Dockerfile.web"
+  sdk:
+    - "apps/sdk/**"
   shared:
     - ".sklp/**"
     - "Dockerfile"
@@ -53,3 +55,19 @@ steps:
     scope: [web, shared]
     tools: [node, pnpm]
     run: pnpm --filter @app/web typecheck
+
+  # Fails on drift: the checked-in OpenAPI spec + generated SDK must match
+  # what the annotated handlers produce. `swag` comes from the runner
+  # toolchain (.sklp/space.yaml go_tools).
+  - name: sdk-up-to-date
+    scope: [sdk, core, shared]
+    tools: [go, node, pnpm]
+    run: |
+      cd apps/core && swag init -g main.go --parseDependency --parseInternal -q
+      cd ../.. && pnpm --filter @app/sdk generate
+      git diff --exit-code -- apps/core/docs apps/sdk/src/generated
+
+  - name: sdk-build
+    scope: [sdk, core, shared]
+    tools: [node, pnpm]
+    run: pnpm --filter @app/sdk build
