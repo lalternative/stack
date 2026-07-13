@@ -25,7 +25,7 @@ import (
 	"app/core/observability"
 	"app/core/pkg/db"
 	"app/core/project"
-	projectevents "app/core/project/events"
+	projecteventhandlers "app/core/project/application/event-handlers"
 )
 
 func main() {
@@ -71,11 +71,11 @@ func main() {
 	// Durable JetStream consumers. consumer.Run owns all redelivery semantics
 	// (Term on permanent errors, bounded MaxDeliver, staged BackOff, the DLQ
 	// stream, ack heartbeats, reconnect). Register one goroutine per handler;
-	// add yours under apps/core/<context>/events/ — never hand-roll a
+	// add yours under apps/core/<context>/application/event-handlers/ — never hand-roll a
 	// JetStream subscription.
 	consumerCtx, stopConsumers := context.WithCancel(ctx)
 	defer stopConsumers()
-	go consumer.Run(consumerCtx, nc, projectevents.NewProjectCreatedHandler(), consumer.Config{})
+	go consumer.Run(consumerCtx, nc, projecteventhandlers.NewProjectCreatedHandler(), consumer.Config{})
 
 	e := echo.New()
 	e.HideBanner = true

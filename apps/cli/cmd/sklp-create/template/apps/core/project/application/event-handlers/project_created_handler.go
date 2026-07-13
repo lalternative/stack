@@ -1,12 +1,12 @@
-// Package events holds this context's integration-event handlers. Each handler
-// implements consumer.EventHandler and writes only business logic in Handle;
-// all JetStream redelivery semantics (Term on permanent errors, bounded
+// Package eventhandlers holds this context's integration-event handlers. Each
+// handler implements consumer.EventHandler and writes only business logic in
+// Handle; all JetStream redelivery semantics (Term on permanent errors, bounded
 // MaxDeliver, staged BackOff, the DLQ stream, ack heartbeats, the reconnect
 // loop) are provided by github.com/lalternative/packages/go/eda/pkg/consumer.
 //
 // Do NOT hand-roll a JetStream subscription here. Copy this file, change the
 // Subject/DurableName and the body of Handle — nothing else.
-package events
+package eventhandlers
 
 import (
 	"context"

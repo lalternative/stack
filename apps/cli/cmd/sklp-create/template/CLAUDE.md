@@ -32,7 +32,8 @@ app starts with the full skalpai dev workflow + observability already wired.
   `github.com/lalternative/packages/go/eda/pkg/consumer` (`consumer.Run` + an
   `EventHandler`). It provides `Term`/`MaxDeliver`/`BackOff`/DLQ/heartbeat/
   idempotency/reconnect by default — you write only `Handle`. New handlers go
-  under `apps/core/<context>/events/`; copy `project/events/` as the template.
+  under `apps/core/<context>/application/event-handlers/`; copy
+  `project/application/event-handlers/` as the template.
   Do not call `js.Subscribe`/`Consume` directly. See `docs/ARCHITECTURE.md`.
 
 ## Feature / PR / Publish flow

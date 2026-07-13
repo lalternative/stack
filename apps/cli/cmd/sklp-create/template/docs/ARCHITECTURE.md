@@ -43,11 +43,11 @@ redelivery concern once, so handlers can't get them wrong:
 | Idempotency | optional `Config.Idempotency` (by `event_id`) |
 | Reconnect / retry loop | `consumer.Run` |
 
-A handler lives under `apps/core/<context>/events/`, implements
-`consumer.EventHandler` (`Name/Subject/DurableName/MaxDeliver/Handle`) and
-writes business logic **only** in `Handle`. `main.go` starts one
-`consumer.Run` goroutine per handler. `apps/core/project/events/` ships a
-working example — copy it, change the subject and the body of `Handle`.
+A handler lives under `apps/core/<context>/application/event-handlers/`,
+implements `consumer.EventHandler` (`Name/Subject/DurableName/MaxDeliver/Handle`)
+and writes business logic **only** in `Handle`. `main.go` starts one
+`consumer.Run` goroutine per handler. `apps/core/project/application/event-handlers/`
+ships a working example — copy it, change the subject and the body of `Handle`.
 
 > Anti-pattern this prevents: a service that re-implements a minimal JetStream
 > consumer (Nak everywhere, no `Term`, no `MaxDeliver`/`BackOff`/DLQ) and
