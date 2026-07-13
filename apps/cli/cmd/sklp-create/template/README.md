@@ -2,8 +2,10 @@
 
 Skalpai-style application generated from the `stack` template. Ships
 with the `sklp` dev/CI/publish workflow, OTEL observability via skalpai
-sdk-go, a Go DDD backend (`apps/core`), a React + TanStack web app
-(`apps/web`).
+sdk-go, a Go DDD backend (`apps/core`) with Postgres + NATS JetStream
+event consumers, Better Auth (`@lalternative/auth`), a generated TS SDK
+(`apps/sdk`), and a React + TanStack web app (`apps/web`). Drop the
+parts you don't need (e.g. the NATS wiring) after scaffolding.
 
 ## Quick start
 

@@ -4,8 +4,10 @@ Skalpai-style application stack. Generated from this template, each new
 app starts with the full skalpai dev workflow + observability already wired.
 
 ## Stack
-- **Backend**: Go 1.25 + Echo v4 + DuckDB (embedded) — port 4100
+- **Backend**: Go 1.25 + Echo v4 + Postgres + NATS JetStream — port 4100
 - **Frontend**: React 19 + TanStack Router + Tailwind v4 — port 5273
+- **Auth**: Better Auth via `@lalternative/auth` (web owns it; core verifies the minted JWT)
+- **SDK**: `apps/sdk` — typed TS client generated from the core OpenAPI (swag → orval → tsup)
 - **Pipeline**: host-installed `sklp` CLI (NOT vendored), config in `.sklp/`
 
 ## Architecture
@@ -24,6 +26,12 @@ app starts with the full skalpai dev workflow + observability already wired.
 - The TS API client is generated, never hand-written: annotate Echo handlers
   with swaggo `// @...`, then `sklp run generate` (swag → orval → tsup).
   `apps/sdk/src/generated` and `apps/core/docs` are checked in.
+- **Never hand-roll a JetStream consumer.** Consume integration events through
+  `github.com/lalternative/packages/go/eda/pkg/consumer` (`consumer.Run` + an
+  `EventHandler`). It provides `Term`/`MaxDeliver`/`BackOff`/DLQ/heartbeat/
+  idempotency/reconnect by default — you write only `Handle`. New handlers go
+  under `apps/core/<context>/events/`; copy `project/events/` as the template.
+  Do not call `js.Subscribe`/`Consume` directly. See `docs/ARCHITECTURE.md`.
 
 ## Feature / PR / Publish flow
 

@@ -11,6 +11,7 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 	"os"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/nats-io/nats.go"
 
 	"app/core/health"
+	"app/core/middleware"
 	"app/core/observability"
 	"app/core/pkg/db"
 	"app/core/project"
@@ -80,7 +82,20 @@ func main() {
 	e.Use(emw.Recover(), emw.RequestID(), observability.EchoMiddleware("core"))
 
 	health.Register(e)
-	project.NewService(pool).RegisterRoutes(e.Group("/api/v1"))
+
+	// Protected API. The web app proxies browser requests to /api/core/* which
+	// map 1:1 onto these routes (see apps/web routes/api/core/$.ts). Every
+	// request carries the `token` cookie verified by middleware.RequireAuth.
+	protected := e.Group("/v1", middleware.RequireAuth())
+	protected.GET("/me", func(c echo.Context) error {
+		u, _ := middleware.GetUser(c)
+		return c.JSON(http.StatusOK, map[string]string{
+			"user_id": u.ID,
+			"email":   u.Email,
+			"name":    u.Name,
+		})
+	})
+	project.NewService(pool).RegisterRoutes(protected)
 
 	port := os.Getenv("PORT")
 	if port == "" {

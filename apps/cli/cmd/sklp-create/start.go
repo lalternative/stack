@@ -14,22 +14,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-//go:embed all:template-simple
-var templateSimpleFS embed.FS
+//go:embed all:template
+var templateFS embed.FS
 
-//go:embed all:template-eda
-var templateEDAFS embed.FS
-
-func templateFor(mode string) (embed.FS, string, error) {
-	switch mode {
-	case "simple":
-		return templateSimpleFS, "template-simple", nil
-	case "eda":
-		return templateEDAFS, "template-eda", nil
-	default:
-		return embed.FS{}, "", fmt.Errorf("unknown --mode %q (want: simple, eda)", mode)
-	}
-}
+const templateRoot = "template"
 
 var nameRe = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
 
@@ -42,17 +30,16 @@ const (
 func newStartCmd() *cobra.Command {
 	var (
 		assumeYes bool
-		mode      string
 		render    string
 	)
 	cmd := &cobra.Command{
 		Use:   "start <name>",
 		Short: "Scaffold a new skalpai-style project in ./<name>",
-		Long: `Create a new project from an embedded stack template.
+		Long: `Create a new project from the embedded stack template.
 
-Two modes are available:
-  --mode simple   Postgres + Echo REST (DDD CRUD)            [default]
-  --mode eda      Postgres + NATS JetStream + eda lib (event-driven)
+The template ships the full stack: Postgres + Echo REST (DDD), NATS
+JetStream event consumers (eda lib), Better Auth, and a generated TS SDK.
+Drop the parts you don't need (e.g. the NATS wiring) after scaffolding.
 
 The web app is built on TanStack Start. Choose how it renders:
   --render ssr    Server-rendered via Nitro                  [default]
@@ -63,16 +50,15 @@ private skalpai sdk-go module can be fetched over SSH. Pass --yes to
 apply both without confirmation.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runStart(args[0], mode, render, assumeYes)
+			return runStart(args[0], render, assumeYes)
 		},
 	}
 	cmd.Flags().BoolVarP(&assumeYes, "yes", "y", false, "apply machine config changes (GOPRIVATE, git insteadOf) without confirmation")
-	cmd.Flags().StringVarP(&mode, "mode", "m", "simple", "template profile: simple | eda")
 	cmd.Flags().StringVarP(&render, "render", "r", "ssr", "web rendering mode: ssr | spa")
 	return cmd
 }
 
-func runStart(name, mode, render string, assumeYes bool) error {
+func runStart(name, render string, assumeYes bool) error {
 	if !nameRe.MatchString(name) {
 		return fmt.Errorf("name must be kebab-case [a-z][a-z0-9-]*, got %q", name)
 	}
@@ -83,16 +69,11 @@ func runStart(name, mode, render string, assumeYes bool) error {
 		return fmt.Errorf("./%s already exists", name)
 	}
 
-	fsys, root, err := templateFor(mode)
-	if err != nil {
-		return err
-	}
-
 	if err := ensureMachineConfig(assumeYes); err != nil {
 		return err
 	}
 
-	if err := extractTemplate(fsys, root, name); err != nil {
+	if err := extractTemplate(templateFS, templateRoot, name); err != nil {
 		return fmt.Errorf("extract template: %w", err)
 	}
 	if err := rename(name); err != nil {
@@ -108,7 +89,7 @@ func runStart(name, mode, render string, assumeYes bool) error {
 		fmt.Fprintf(os.Stderr, "warn: git init failed (%v) — continuing\n", err)
 	}
 
-	fmt.Printf("✓ created ./%s (mode=%s, render=%s)\n\n", name, mode, render)
+	fmt.Printf("✓ created ./%s (render=%s)\n\n", name, render)
 	fmt.Printf("next:\n")
 	fmt.Printf("  cd %s\n", name)
 	fmt.Printf("  git config core.hooksPath .githooks\n")
@@ -160,11 +141,7 @@ func applyRenderMode(name, render string) error {
 	// ships without auth, and the Caddyfile above serves the static build and
 	// reverse-proxies /api to the Go core. Re-add auth by switching to SSR.
 	authPaths := []string{
-		"src/lib/auth.ts",
-		"src/lib/auth-client.ts",
-		"src/lib/db.ts",
-		"src/lib/get-server-session.ts",
-		"src/lib/mint-core-token.ts",
+		"src/lib",                   // auth.ts, db.ts, session/token helpers (all server-side)
 		"src/routes/api",            // api/auth/$ + api/core/$ server routes
 		"src/routes/_protected.tsx", // pathless auth guard
 		"src/routes/_protected",     // protected routes (index lives here in SSR)
