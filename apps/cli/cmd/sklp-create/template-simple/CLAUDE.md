@@ -27,9 +27,17 @@ app starts with the full skalpai dev workflow + observability already wired.
 
 ## Feature / PR / Publish flow
 
-1. Feature branch in a dedicated worktree.
+Use the `sklp flow` helpers — they wrap this flow and, by creating a
+dedicated worktree per feature, let several features be worked on in
+parallel without branch-switching in a shared checkout. Prefer them over
+raw `git checkout -b`.
+
+1. `sklp flow start <name>` — opens `feat/<name>` in a dedicated worktree
+   (default; `--branch` checks out in place instead). One worktree per
+   feature keeps parallel work isolated.
 2. `sklp run ci` before pushing.
-3. PR targeting `main`. CI runs again on PR.
+3. `sklp flow end --pr` — diffs vs `--onto`, runs CI on the impacted scope,
+   and opens the PR targeting `main`. CI runs again on PR.
 4. After merge, update local `main`.
 5. `sklp run publish` from clean local `main`.
 6. Publish only impacted services. Tags `YYYYMMDD-HHMM-<short-sha>`.
