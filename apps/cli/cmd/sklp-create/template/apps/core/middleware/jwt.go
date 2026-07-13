@@ -63,7 +63,15 @@ func parse(raw string, secret []byte) (User, error) {
 			return nil, errors.New("unexpected signing method")
 		}
 		return secret, nil
-	})
+	},
+		// Belt-and-suspenders alg guard: reject anything but HS256 at the
+		// parser level, before the keyfunc runs, so an alg-confusion token
+		// (alg:none, RS256→HS256) can't slip through a future keyfunc edit.
+		jwt.WithValidMethods([]string{"HS256"}),
+		// Reject tokens without an exp claim outright, instead of treating a
+		// missing expiry as "never expires".
+		jwt.WithExpirationRequired(),
+	)
 	if err != nil || !tok.Valid || cl.Subject == "" {
 		return User{}, errors.New("invalid token")
 	}
