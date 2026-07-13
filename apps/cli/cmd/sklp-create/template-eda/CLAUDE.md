@@ -41,14 +41,14 @@ app starts with the full skalpai dev workflow + observability already wired.
 Rules:
 - Never publish from a feature branch.
 - Never claim deployment success when only the image was pushed.
-- Treat `.sklp/tasks/ci.yaml` and `.sklp/tasks/publish.yaml` as the source of truth.
+- Treat `.sklp/pipelines/ci.yaml` and `.sklp/pipelines/publish.yaml` as the source of truth.
 
 ## Development
 
 ```bash
 cp .env.example .env
-sklp dev                   # boots core → web
-sklp dev --validate        # parse-only sanity check
+sklp dev stack             # boots core → web
+sklp dev stack --validate  # parse-only sanity check
 ```
 
 Ports: core 4100, web 5273.

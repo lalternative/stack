@@ -10,28 +10,28 @@ sdk-go, a Go DDD backend (`apps/core`), a React + TanStack web app
 ```bash
 cp .env.example .env                # fill SKALPAI_PROJECT_ID + SKALPAI_API_KEY
 git config core.hooksPath .githooks
-sklp dev                            # boots core (4100) + web (5273)
+sklp dev stack                      # boots core (4100) + web (5273)
 ```
 
 ## Layout
 
 ```
-.sklp/                 dev.yaml + tasks/{ci,build,publish,secops}.yaml
+.sklp/                 space.yaml + stack/dev.yaml + pipelines/{ci,build,publish,secops}.yaml
 apps/
-  core/                Go 1.25 + Echo v4 + DuckDB (DDD per bounded context)
+  core/                Go 1.25 + Echo v4 + Postgres (DDD per bounded context)
   web/                 React 19 + TanStack Router + Vite
-  cli/                 Project CLI binary (cobra)
 infra/nginx/           Static bundle nginx config
 Dockerfile*            One per shipped image (core, web)
 ```
 
 ## Workflow
 
-Source of truth: `.sklp/dev.yaml` + `.sklp/tasks/*.yaml`.
+Source of truth: `.sklp/space.yaml` (runner recipe), `.sklp/stack/dev.yaml`
+(dev topology) + `.sklp/pipelines/*.yaml` (CI/build/publish).
 
 | Command | What it runs |
 |---|---|
-| `sklp dev` | Local supervisor — core + web |
+| `sklp dev stack` | Local supervisor — core + web |
 | `sklp run ci` | Lint + test impacted services |
 | `sklp run build` | Build `bin/core` + web bundle |
 | `sklp run secops` | Security scan: gitleaks + semgrep + govulncheck + trivy |

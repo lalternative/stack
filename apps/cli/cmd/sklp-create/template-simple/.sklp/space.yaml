@@ -1,0 +1,25 @@
+runner:
+  registry: rg.fr-par.scw.cloud/skaplai
+  registry_auth_secret: scw-registry-credentials
+
+  toolchain:
+    go: "1.25.0"
+    node: "22.19.0"
+    pnpm: "10.27.0"
+    gitleaks: "8.18.4"
+    trivy: "0.70.0"
+
+  packages:
+    - git
+    - ca-certificates
+    - curl
+
+  go_tools:
+    - github.com/swaggo/swag/cmd/swag@v1.16.6
+    - golang.org/x/vuln/cmd/govulncheck@v1.1.4
+
+  env:
+    GOPRIVATE: github.com/digstack
+
+  secrets:
+    - GITHUB_TOKEN

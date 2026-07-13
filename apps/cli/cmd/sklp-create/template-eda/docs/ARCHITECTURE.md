@@ -65,20 +65,21 @@ add — it's not in the stack to avoid a forced dep).
 
 ## sklp seam
 
-The stack **uses** the host `sklp` CLI. `.sklp/dev.yaml` is the
-declarative dev topology; `.sklp/tasks/*.yaml` are the CI/build/publish
-pipelines. New behavior goes into helpers/templates/codegen — not into
-new top-level YAML fields (skalpai convention).
+The stack **uses** the host `sklp` CLI. `.sklp/space.yaml` is the runner
+recipe (toolchain + registry); `.sklp/stack/dev.yaml` is the declarative
+dev topology; `.sklp/pipelines/*.yaml` are the CI/build/publish pipelines.
+New behavior goes into helpers/templates/codegen — not into new top-level
+YAML fields (skalpai convention).
 
 ## Renaming
 
-Run `./scripts/rename.sh <newname>` after cloning to:
-- replace `app/` Go module paths with `<newname>/`
-- replace `@app/` npm scopes with `@<newname>/`
+`sklp start <name>` renames the template in-process while scaffolding:
+- replace `app/` Go module paths with `<name>/`
+- replace `@app/` npm scopes with `@<name>/`
 - replace `rg.fr-par.scw.cloud/skaplai/` images with your registry/team
 
 ## Container registry policy
 
 `rg.fr-par.scw.cloud/skaplai/<service>:YYYYMMDD-HHMM-<short-sha>`. Set by
-`tag.strategy: date-sha` in `.sklp/tasks/publish.yaml`. Never `latest`,
+`tag.strategy: date-sha` in `.sklp/pipelines/publish.yaml`. Never `latest`,
 never overwritten, Trivy gates HIGH/CRITICAL fixable findings.

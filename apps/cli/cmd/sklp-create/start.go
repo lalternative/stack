@@ -112,7 +112,7 @@ func runStart(name, mode, render string, assumeYes bool) error {
 	fmt.Printf("next:\n")
 	fmt.Printf("  cd %s\n", name)
 	fmt.Printf("  git config core.hooksPath .githooks\n")
-	fmt.Printf("  sklp dev\n")
+	fmt.Printf("  sklp dev stack\n")
 	return nil
 }
 
@@ -445,8 +445,8 @@ func extractTemplate(fsys embed.FS, root, dst string) error {
 	})
 }
 
-// rename rewrites the template placeholders to the chosen project name.
-// Mirrors scripts/rename.sh but runs in-process from the embedded copy.
+// rename rewrites the template placeholders to the chosen project name,
+// in-process from the embedded copy.
 func rename(name string) error {
 	return filepath.WalkDir(name, func(p string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
@@ -460,6 +460,10 @@ func rename(name string) error {
 		s = strings.ReplaceAll(s, "@app/", "@"+name+"/")
 		s = strings.ReplaceAll(s, `"app/`, `"`+name+`/`)
 		s = strings.ReplaceAll(s, "module app/", "module "+name+"/")
+		// Registry root in .sklp/space.yaml has no trailing service segment
+		// (rg.fr-par.scw.cloud/skaplai); rewrite it before the trailing-slash
+		// form used by publish image paths (skaplai/core).
+		s = strings.ReplaceAll(s, ".scw.cloud/skaplai", ".scw.cloud/"+name)
 		s = strings.ReplaceAll(s, "skaplai/", name+"/")
 		if s == string(b) {
 			return nil
