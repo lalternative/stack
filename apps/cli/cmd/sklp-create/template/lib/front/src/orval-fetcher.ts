@@ -6,12 +6,12 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// Calls go through the same-origin proxy route (apps/web routes/api/core/$.ts),
+// Calls go through the same-origin reverse proxy (apps/web routes/api/v1/$.ts),
 // which forwards to the Go core from inside the web service. Because the browser
 // only ever hits its own origin, there is NO CORS: no preflight, no
-// ALLOWED_ORIGINS to keep in sync. `/api/core` is the proxy; `/v1` is the core's
-// protected route group (see apps/core/main.go).
-const API_BASE = "/api/core/v1";
+// ALLOWED_ORIGINS to keep in sync. The core mounts /api/v1 (apps/core/main.go),
+// and orval-generated urls are relative to it (e.g. /projects).
+const API_BASE = "/api/v1";
 
 export async function coreFetcher<T>(
   url: string,

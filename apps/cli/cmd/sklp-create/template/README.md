@@ -34,7 +34,7 @@ The core exposes an OpenAPI spec (swaggo annotations on the Echo handlers).
 orval generates a typed **React Query** client from it into the shared front
 lib `lib/front/src/api` (package `@app/front`), routed through a hand-written
 `fetch` mutator (`lib/front/src/orval-fetcher.ts`) that sends the session
-cookie same-origin via the web's `/api/core/*` proxy. The client is consumed
+cookie same-origin via the web's `/api/v1/*` reverse proxy. The client is consumed
 as source (no build step). Never hand-edit it — annotate the handlers, then
 regenerate:
 

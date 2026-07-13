@@ -1,10 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-// Same-origin proxy to the core API. The browser calls /api/core/* (relative,
-// served by this TanStack Start server), and this handler forwards to core.
-// Because every browser request is same-origin, there is NO CORS: no preflight,
-// no ALLOWED_ORIGINS to keep in sync. CORE_API_URL points at the core service.
-const CORE_URL = (process.env.CORE_API_URL ?? "http://localhost:4100").replace(/\/+$/, "");
+// Same-origin reverse proxy: forwards /api/v1/* to the Go core so the browser
+// never talks to the core cross-origin. Keeping it same-origin means the
+// `token` cookie stays SameSite=Lax and the core needs no CORS entry.
+//
+// The incoming path already starts with /api/v1, which the core mounts
+// (apps/core/main.go), so we forward the path verbatim. Headers are passed
+// through unchanged (Cookie, Authorization, Content-Type, ...) — so a caller
+// may authenticate with the session cookie OR an `Authorization: Bearer`.
+// CORE_API_URL points at the core host (e.g. http://core:4100 in-cluster).
+const CORE_URL = (process.env.CORE_API_URL ?? "http://localhost:4100").replace(
+  /\/+$/,
+  "",
+);
 
 // Hop-by-hop headers must not be forwarded (RFC 7230 §6.1); `host` is dropped so
 // fetch sets it for the upstream. `content-length`/`content-encoding` are
@@ -24,10 +32,10 @@ const STRIP_REQUEST_HEADERS = new Set([
   "trailer",
 ]);
 
-async function proxy({ request, params }: { request: Request; params: { _splat?: string } }) {
+async function proxy({ request }: { request: Request }) {
   const incoming = new URL(request.url);
-  const path = params._splat ?? "";
-  const target = `${CORE_URL}/${path}${incoming.search}`;
+  // Forward the path verbatim — the core mounts /api/v1.
+  const target = `${CORE_URL}${incoming.pathname}${incoming.search}`;
 
   const headers = new Headers();
   for (const [key, value] of request.headers) {
@@ -37,12 +45,21 @@ async function proxy({ request, params }: { request: Request; params: { _splat?:
   const method = request.method;
   const hasBody = method !== "GET" && method !== "HEAD";
 
-  const upstream = await fetch(target, {
-    method,
-    headers,
-    body: hasBody ? await request.arrayBuffer() : undefined,
-    redirect: "manual",
-  });
+  let upstream: Response;
+  try {
+    upstream = await fetch(target, {
+      method,
+      headers,
+      body: hasBody ? await request.arrayBuffer() : undefined,
+      redirect: "manual",
+    });
+  } catch {
+    // Core unreachable (down, DNS, refused) — surface a gateway error, not 500.
+    return new Response(JSON.stringify({ message: "core unavailable" }), {
+      status: 502,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 
   const respHeaders = new Headers(upstream.headers);
   respHeaders.delete("content-length");
@@ -62,7 +79,7 @@ async function proxy({ request, params }: { request: Request; params: { _splat?:
   });
 }
 
-export const Route = createFileRoute("/api/core/$")({
+export const Route = createFileRoute("/api/v1/$")({
   server: {
     handlers: {
       GET: proxy,

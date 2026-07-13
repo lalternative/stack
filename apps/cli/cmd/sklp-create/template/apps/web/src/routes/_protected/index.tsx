@@ -13,9 +13,10 @@ function Home() {
   const [projects, setProjects] = useState<Project[]>([]);
 
   useEffect(() => {
-    // Same-origin proxy to the Go core (see routes/api/core/$.ts) — the auth
-    // cookie travels automatically, no CORS. /api/core/* maps 1:1 to core /*.
-    fetch("/api/core/v1/projects")
+    // Same-origin proxy to the Go core (see routes/api/v1/$.ts) — the auth
+    // cookie travels automatically, no CORS. /api/v1/* is forwarded verbatim.
+    // (For typed calls, prefer the generated hooks from @app/front.)
+    fetch("/api/v1/projects")
       .then((r) => (r.ok ? r.json() : []))
       .then(setProjects)
       .catch(() => {});

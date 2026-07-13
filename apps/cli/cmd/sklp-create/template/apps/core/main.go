@@ -83,10 +83,10 @@ func main() {
 
 	health.Register(e)
 
-	// Protected API. The web app proxies browser requests to /api/core/* which
-	// map 1:1 onto these routes (see apps/web routes/api/core/$.ts). Every
-	// request carries the `token` cookie verified by middleware.RequireAuth.
-	protected := e.Group("/v1", middleware.RequireAuth())
+	// Protected API. The web app reverse-proxies browser requests to /api/v1/*
+	// verbatim (see apps/web routes/api/v1/$.ts). Every request carries the
+	// `token` cookie (or Authorization: Bearer) verified by RequireAuth.
+	protected := e.Group("/api/v1", middleware.RequireAuth())
 	protected.GET("/me", func(c echo.Context) error {
 		u, _ := middleware.GetUser(c)
 		return c.JSON(http.StatusOK, map[string]string{
