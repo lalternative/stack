@@ -22,10 +22,9 @@ sklp dev stack                      # boots core (4100) + web (5273)
 .sklp/                 space.yaml + stack/dev.yaml + pipelines/{ci,build,generate,publish,secops}.yaml
 apps/
   core/                Go 1.25 + Echo v4 + Postgres + NATS (DDD per bounded context)
-  web/                 React 19 + TanStack Router + Vite
+  web/                 React 19 + TanStack Start (SSR via Nitro)
 lib/front/             Shared front lib: typed React Query client (@app/front)
-infra/nginx/           Static bundle nginx config
-Dockerfile*            One per shipped image (core, web)
+Dockerfile*            One per shipped image (core distroless, web = Nitro SSR server)
 ```
 
 ## API client

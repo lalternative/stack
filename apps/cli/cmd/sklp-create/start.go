@@ -76,11 +76,14 @@ func runStart(name, render string, assumeYes bool) error {
 	if err := extractTemplate(templateFS, templateRoot, name); err != nil {
 		return fmt.Errorf("extract template: %w", err)
 	}
-	if err := rename(name); err != nil {
-		return fmt.Errorf("rename: %w", err)
-	}
+	// Apply the render mode BEFORE rename: the SPA variant writes files that
+	// carry @app/ placeholders (vite.config, Caddyfile, Dockerfile.web), so
+	// they must be in place before rename rewrites the placeholders.
 	if err := applyRenderMode(name, render); err != nil {
 		return fmt.Errorf("set render mode: %w", err)
+	}
+	if err := rename(name); err != nil {
+		return fmt.Errorf("rename: %w", err)
 	}
 	if err := copyEnvExample(name); err != nil {
 		return fmt.Errorf("seed .env: %w", err)
@@ -157,6 +160,12 @@ func applyRenderMode(name, render string) error {
 	// The SSR-only server entry script is meaningless for a SPA; drop it so the
 	// generated package.json does not advertise a `node .output/server` start.
 	if err := stripStartScript(filepath.Join(web, "package.json")); err != nil {
+		return err
+	}
+	// The default Dockerfile.web builds the Nitro SSR server (node .output).
+	// A SPA has no server: rewrite it to build the static bundle and serve it
+	// with Caddy (the Caddyfile written above), matching the SPA runtime.
+	if err := os.WriteFile(filepath.Join(name, "Dockerfile.web"), []byte(dockerfileWebSPA), 0o644); err != nil {
 		return err
 	}
 	return nil
@@ -323,6 +332,30 @@ const caddyfile = `# Production front for the SPA build.
 		file_server
 	}
 }
+`
+
+// dockerfileWebSPA is the SPA replacement for the default (SSR/Nitro)
+// Dockerfile.web: build the static Vite bundle, then serve it with Caddy
+// (SPA fallback + /api reverse proxy). A SPA has no node server, so there is
+// no `.output/server` to run.
+const dockerfileWebSPA = `# web image — static SPA bundle on Caddy
+# Pin pnpm explicitly (never @latest in Dockerfile.web — see memory).
+FROM node:22-bookworm AS build
+RUN corepack enable && corepack prepare pnpm@10.27.0 --activate
+WORKDIR /src
+ENV CI=true
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/web/package.json ./apps/web/package.json
+COPY lib/front/package.json ./lib/front/package.json
+RUN pnpm install --frozen-lockfile
+COPY apps/web ./apps/web
+COPY lib/front ./lib/front
+RUN pnpm --filter @app/web build
+
+FROM caddy:2-alpine
+COPY apps/web/Caddyfile /etc/caddy/Caddyfile
+COPY --from=build /src/apps/web/dist /srv
+EXPOSE 8080
 `
 
 // ensureMachineConfig checks the two prerequisites for fetching the
