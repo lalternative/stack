@@ -3,15 +3,15 @@ kind: pipeline
 name: generate
 description: |
   Regenerate the artefacts that are checked into the repo but produced by
-  tooling: the core OpenAPI spec (swag) and the typed TS SDK client (orval).
+  tooling: the core OpenAPI spec (swag) and the typed React Query client
+  (orval).
 
-  The SDK chain is swag -> swagger.{json,yaml} -> orval -> tsup:
-    swagger      regenerates apps/core/docs from handler annotations
-    sdk-generate regenerates apps/sdk/src/generated from the spec
-    sdk-build    bundles apps/sdk/dist
+  The chain is swag -> apps/core/docs/swagger.json -> orval -> lib/front/src/api:
+    swagger    regenerates apps/core/docs from the handler annotations
+    client-ts  regenerates lib/front/src/api (typed react-query client)
 
-  `swag` comes from the runner toolchain (.sklp/space.yaml go_tools), so no
-  ad-hoc `go install` is needed here.
+  The generated client is consumed as source (no build step). `swag` comes from
+  the runner toolchain (.sklp/space.yaml go_tools), so no ad-hoc `go install`.
 
 tools:
   go: "1.25.0"
@@ -24,12 +24,7 @@ steps:
     run: |
       cd apps/core && swag init -g main.go --parseDependency --parseInternal -q
 
-  - name: sdk-generate
+  - name: client-ts
     depends_on: [swagger]
     tools: [node, pnpm]
-    run: pnpm --filter @app/sdk generate
-
-  - name: sdk-build
-    depends_on: [sdk-generate]
-    tools: [node, pnpm]
-    run: pnpm --filter @app/sdk build
+    run: pnpm --filter @app/web generate:api

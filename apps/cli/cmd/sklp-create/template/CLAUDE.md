@@ -7,7 +7,7 @@ app starts with the full skalpai dev workflow + observability already wired.
 - **Backend**: Go 1.25 + Echo v4 + Postgres + NATS JetStream — port 4100
 - **Frontend**: React 19 + TanStack Router + Tailwind v4 — port 5273
 - **Auth**: Better Auth via `@lalternative/auth` (web owns it; core verifies the minted JWT)
-- **SDK**: `apps/sdk` — typed TS client generated from the core OpenAPI (swag → orval → tsup)
+- **API client**: `lib/front` (`@app/front`) — typed React Query client generated from the core OpenAPI (swag → orval), consumed as source
 - **Pipeline**: host-installed `sklp` CLI (NOT vendored), config in `.sklp/`
 
 ## Architecture
@@ -24,8 +24,10 @@ app starts with the full skalpai dev workflow + observability already wired.
 - Use `github.com/google/uuid` for IDs
 - JWT middleware extracts user via `middleware.GetUser(c)`
 - The TS API client is generated, never hand-written: annotate Echo handlers
-  with swaggo `// @...`, then `sklp run generate` (swag → orval → tsup).
-  `apps/sdk/src/generated` and `apps/core/docs` are checked in.
+  with swaggo `// @...`, then `sklp run generate` (swag → orval). The typed
+  React Query client lands in `lib/front/src/api` (`@app/front`), consumed as
+  source via subpaths (`@app/front/api/<tag>/<tag>`). `lib/front/src/api` and
+  `apps/core/docs` are checked in.
 - **Never hand-roll a JetStream consumer.** Consume integration events through
   `github.com/lalternative/packages/go/eda/pkg/consumer` (`consumer.Run` + an
   `EventHandler`). It provides `Term`/`MaxDeliver`/`BackOff`/DLQ/heartbeat/
