@@ -6,9 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface ProjectProjectDTO {
-  created_at?: string;
-  id?: string;
+export interface ExampleCreateRequest {
   name?: string;
-  owner_id?: string;
 }

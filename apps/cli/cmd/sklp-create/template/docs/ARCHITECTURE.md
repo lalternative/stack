@@ -6,19 +6,25 @@ mental model from day one.
 ## Layered backend (DDD)
 
 ```
-apps/core/<context>/
-├── api.go              ── HTTP handlers (Echo). Thin: bind → call handler → DTO
-├── dto.go              ── transport types + mapping from domain
-├── bootstrap.go        ── wires handlers + repo, exposes RegisterRoutes
-├── domain/             ── entities, value objects, repository interfaces
+apps/core/<context>/          (see apps/core/example/ — CQRS via go/eda)
+├── api.go              ── HTTP handlers (Echo). Thin: bind → cqrs.Execute/Ask → DTO
+├── dto.go              ── transport types
+├── bootstrap.go        ── DI registry: store, repo, projection, command/query
+│                          routers; exposes NewService + RegisterRoutes
+├── domain/             ── event-sourced aggregate (ddd.BaseAggregateRoot) + events
+├── projection/         ── read model, updated from the event stream (Apply)
 ├── application/<usecase>/
-│                       ── one folder per command/query. Holds Command|Query +
-│                          Handler. No HTTP, no SQL.
-└── infrastructure/     ── concrete repositories (duckdb_repository.go, ...)
+│                       ── one folder per command/query (Command|Query + Handler).
+│                          No HTTP.
+├── application/event-handlers/  ── durable JetStream consumers (consumer.EventHandler)
+└── infrastructure/     ── event-store-backed repository (go/eda db.Store)
 ```
 
-Rationale: same shape as `apps/core/project/` in skalpai. New contexts copy
-the folder, no debate.
+Rationale: `apps/core/example/` is a runnable CQRS example built on
+`github.com/lalternative/packages/go/eda` (aggregate → event → projection →
+query, DI-wired), modelled on that lib's `examples/banking`. Its event store is
+**in-memory** (an example — swap `db.InMemoryStore` for a Postgres `db.Store` to
+persist). Copy the folder to a real context name, or delete it.
 
 ## Data access seam
 
@@ -46,7 +52,7 @@ redelivery concern once, so handlers can't get them wrong:
 A handler lives under `apps/core/<context>/application/event-handlers/`,
 implements `consumer.EventHandler` (`Name/Subject/DurableName/MaxDeliver/Handle`)
 and writes business logic **only** in `Handle`. `main.go` starts one
-`consumer.Run` goroutine per handler. `apps/core/project/application/event-handlers/`
+`consumer.Run` goroutine per handler. `apps/core/example/application/event-handlers/`
 ships a working example — copy it, change the subject and the body of `Handle`.
 
 > Anti-pattern this prevents: a service that re-implements a minimal JetStream

@@ -20,12 +20,12 @@ import (
 	emw "github.com/labstack/echo/v4/middleware"
 	"github.com/nats-io/nats.go"
 
+	"app/core/example"
+	exampleeventhandlers "app/core/example/application/event-handlers"
 	"app/core/health"
 	"app/core/middleware"
 	"app/core/observability"
 	"app/core/pkg/db"
-	"app/core/project"
-	projecteventhandlers "app/core/project/application/event-handlers"
 )
 
 func main() {
@@ -75,7 +75,7 @@ func main() {
 	// JetStream subscription.
 	consumerCtx, stopConsumers := context.WithCancel(ctx)
 	defer stopConsumers()
-	go consumer.Run(consumerCtx, nc, projecteventhandlers.NewProjectCreatedHandler(), consumer.Config{})
+	go consumer.Run(consumerCtx, nc, exampleeventhandlers.NewExampleCreatedHandler(), consumer.Config{})
 
 	e := echo.New()
 	e.HideBanner = true
@@ -95,7 +95,11 @@ func main() {
 			"name":    u.Name,
 		})
 	})
-	project.NewService(pool).RegisterRoutes(protected)
+	exampleSvc, err := example.NewService(ctx)
+	if err != nil {
+		log.Fatalf("example service: %v", err)
+	}
+	exampleSvc.RegisterRoutes(protected)
 
 	port := os.Getenv("PORT")
 	if port == "" {

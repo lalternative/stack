@@ -4,20 +4,21 @@ definitions:
     properties:
       message: {}
     type: object
-  project.CreateRequest:
+  example.CreateRequest:
     properties:
       name:
         type: string
     type: object
-  project.ProjectDTO:
+  example.ExampleDTO:
     properties:
-      created_at:
-        type: string
       id:
         type: string
       name:
         type: string
-      owner_id:
+    type: object
+  example.RenameRequest:
+    properties:
+      name:
         type: string
     type: object
 info:
@@ -26,54 +27,93 @@ info:
   title: Core API
   version: 0.1.0
 paths:
-  /projects:
-    get:
-      operationId: listProjects
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/project.ProjectDTO'
-            type: array
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/echo.HTTPError'
-      security:
-      - BearerAuth: []
-      summary: List projects owned by the caller
-      tags:
-      - projects
+  /examples:
     post:
       consumes:
       - application/json
-      operationId: createProject
+      operationId: createExample
       parameters:
-      - description: Project to create
+      - description: Example to create
         in: body
         name: body
         required: true
         schema:
-          $ref: '#/definitions/project.CreateRequest'
+          $ref: '#/definitions/example.CreateRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/project.ProjectDTO'
+            $ref: '#/definitions/example.ExampleDTO'
         "400":
           description: Bad Request
           schema:
             $ref: '#/definitions/echo.HTTPError'
       security:
       - BearerAuth: []
-      summary: Create a project
+      summary: Create an example
       tags:
-      - projects
+      - examples
+  /examples/{id}:
+    get:
+      operationId: getExample
+      parameters:
+      - description: Example id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/example.ExampleDTO'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Get an example by id
+      tags:
+      - examples
+    patch:
+      consumes:
+      - application/json
+      operationId: renameExample
+      parameters:
+      - description: Example id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: New name
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/example.RenameRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/echo.HTTPError'
+      security:
+      - BearerAuth: []
+      summary: Rename an example
+      tags:
+      - examples
 securityDefinitions:
   BearerAuth:
     description: Pass `Bearer <token>`. JWT is verified by the gateway; the user id

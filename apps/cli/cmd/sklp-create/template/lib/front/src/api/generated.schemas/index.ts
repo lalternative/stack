@@ -7,5 +7,6 @@
  */
 
 export * from './echoHTTPError';
-export * from './projectCreateRequest';
-export * from './projectProjectDTO';
+export * from './exampleCreateRequest';
+export * from './exampleExampleDTO';
+export * from './exampleRenameRequest';

@@ -14,6 +14,9 @@ export default defineConfig({
       target: "../../lib/front/src/api",
       schemas: "../../lib/front/src/api/generated.schemas",
       client: "react-query",
+      // Wipe stale generated files (e.g. a removed tag) on each run so the
+      // committed client can never drift from the spec.
+      clean: true,
       override: {
         mutator: {
           path: "../../lib/front/src/orval-fetcher.ts",

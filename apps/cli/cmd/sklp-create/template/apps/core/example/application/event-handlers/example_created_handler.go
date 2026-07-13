@@ -17,29 +17,29 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-// ProjectCreated is the payload this example handler consumes.
-type ProjectCreated struct {
+// ExampleCreated is the integration-event payload this handler consumes.
+type ExampleCreated struct {
 	EventID string `json:"event_id"`
 	ID      string `json:"id"`
 	Name    string `json:"name"`
 }
 
-// ProjectCreatedHandler is a sample durable consumer. Delete it once you wire
+// ExampleCreatedHandler is a sample durable consumer. Delete it once you wire
 // your own, or keep it as the template for new ones.
-type ProjectCreatedHandler struct{}
+type ExampleCreatedHandler struct{}
 
-func NewProjectCreatedHandler() *ProjectCreatedHandler { return &ProjectCreatedHandler{} }
+func NewExampleCreatedHandler() *ExampleCreatedHandler { return &ExampleCreatedHandler{} }
 
-func (*ProjectCreatedHandler) Name() string        { return "project-created" }
-func (*ProjectCreatedHandler) Subject() string     { return "integration.project.created" }
-func (*ProjectCreatedHandler) DurableName() string { return "project-created-consumer" }
-func (*ProjectCreatedHandler) MaxDeliver() int     { return 3 }
+func (*ExampleCreatedHandler) Name() string        { return "example-created" }
+func (*ExampleCreatedHandler) Subject() string     { return "integration.example.created" }
+func (*ExampleCreatedHandler) DurableName() string { return "example-created-consumer" }
+func (*ExampleCreatedHandler) MaxDeliver() int     { return 3 }
 
-func (*ProjectCreatedHandler) Handle(ctx context.Context, msg *nats.Msg) error {
-	var ev ProjectCreated
+func (*ExampleCreatedHandler) Handle(ctx context.Context, msg *nats.Msg) error {
+	var ev ExampleCreated
 	if err := json.Unmarshal(msg.Data, &ev); err != nil {
 		// Malformed payload: no retry can fix it -> dead-letter immediately.
-		return consumer.Permanent(fmt.Errorf("decode project.created: %w", err))
+		return consumer.Permanent(fmt.Errorf("decode example.created: %w", err))
 	}
 
 	// ... your business logic. Returning a plain (non-permanent) error here

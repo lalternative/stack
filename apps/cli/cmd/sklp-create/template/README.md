@@ -42,7 +42,7 @@ sklp run generate    # swag → apps/core/docs, orval → lib/front/src/api
 ```
 
 Consume per-tag hooks from the package subpath, e.g.
-`import { useListProjects } from "@app/front/api/projects/projects"`.
+`import { useCreateExample } from "@app/front/api/examples/examples"`.
 `apps/core/docs` and `lib/front/src/api` are checked in.
 
 ## Workflow

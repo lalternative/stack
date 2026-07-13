@@ -11,10 +11,18 @@ app starts with the full skalpai dev workflow + observability already wired.
 - **Pipeline**: host-installed `sklp` CLI (NOT vendored), config in `.sklp/`
 
 ## Architecture
-- DDD per bounded context under `apps/core/<context>/`
-- Pattern: `domain/ → application/<usecase>/ → infrastructure/ → api.go + dto.go + bootstrap.go`
-- Database abstraction via `pkg/db.Executor` interface
-- File-based SQL migrations in `apps/core/migrations/postgres/`
+- DDD + CQRS per bounded context under `apps/core/<context>/` (see `example/`)
+- Event-sourced via `github.com/lalternative/packages/go/eda`: aggregate
+  (`ddd.BaseAggregateRoot` + `ddd.Raise`) → events → projection (read model) →
+  typed command/query routers (`cqrs.Execute`/`cqrs.Ask`), wired with `di`.
+  Modelled on `go/eda/examples/banking`. `example/`'s event store is in-memory
+  (swap `db.InMemoryStore` for a Postgres `db.Store` to persist).
+- Layout: `domain/ (aggregate+events) → application/<usecase>/ (command|query) →
+  projection/ → infrastructure/ (repo on event store) → api.go + dto.go + bootstrap.go`
+- Integration events: durable JetStream consumers under
+  `<context>/application/event-handlers/` via `eda/pkg/consumer`
+- File-based SQL migrations in `apps/core/migrations/postgres/` (auth/base tables;
+  the example context is in-memory, no table)
 - Observability wired at boot through `apps/core/observability` using `@digstack/sdk-go`
 
 ## Conventions
@@ -33,7 +41,7 @@ app starts with the full skalpai dev workflow + observability already wired.
   `EventHandler`). It provides `Term`/`MaxDeliver`/`BackOff`/DLQ/heartbeat/
   idempotency/reconnect by default — you write only `Handle`. New handlers go
   under `apps/core/<context>/application/event-handlers/`; copy
-  `project/application/event-handlers/` as the template.
+  `example/application/event-handlers/` as the template.
   Do not call `js.Subscribe`/`Consume` directly. See `docs/ARCHITECTURE.md`.
 
 ## Feature / PR / Publish flow
