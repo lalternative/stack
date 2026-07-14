@@ -129,7 +129,25 @@ func scaffoldWeb(name string) error {
 	if err := rewireWebPackageJSON(filepath.Join(abs, "package.json")); err != nil {
 		return err
 	}
-	return relaxWebTSConfig(filepath.Join(abs, "tsconfig.json"))
+	if err := relaxWebTSConfig(filepath.Join(abs, "tsconfig.json")); err != nil {
+		return err
+	}
+	return writeWebLockfile(name)
+}
+
+// writeWebLockfile generates the workspace pnpm-lock.yaml. The CLI runs with
+// --no-install (no lockfile), but the stack CI installs with --frozen-lockfile
+// and fails without one. `--lockfile-only` resolves the graph and writes the
+// lockfile without downloading/linking packages, so it stays fast.
+func writeWebLockfile(name string) error {
+	cmd := exec.Command("pnpm", "install", "--lockfile-only", "--ignore-scripts")
+	cmd.Dir = name
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("pnpm install --lockfile-only: %w", err)
+	}
+	return nil
 }
 
 // relaxWebTSConfig turns off noUnusedLocals/noUnusedParameters in the generated
@@ -165,8 +183,10 @@ func rewireWebPackageJSON(path string) error {
 		{`"dev": "vite dev --port 3000"`, `"dev": "vite dev --port 5273"`},
 		{`"preview": "vite preview"`, `"preview": "vite preview --port 5273"`},
 		// The stack CI runs `pnpm --filter @app/web typecheck`; the TanStack CLI
-		// ships `lint`/`test` but no typecheck script, so add one.
-		{`"lint": "eslint",`, "\"lint\": \"eslint\",\n    \"typecheck\": \"tsc --noEmit\","},
+		// ships `lint`/`test` but no typecheck script. Generate the route tree
+		// first — routeTree.gen.ts is not committed, so `tsc` alone fails on a
+		// fresh checkout with "Cannot find module './routeTree.gen'".
+		{`"lint": "eslint",`, "\"lint\": \"eslint\",\n    \"typecheck\": \"tsr generate && tsc --noEmit\","},
 	}
 	for _, r := range repl {
 		s = strings.Replace(s, r.from, r.to, 1)
@@ -174,7 +194,21 @@ func rewireWebPackageJSON(path string) error {
 	if !strings.Contains(s, `"name": "@app/web"`) {
 		return fmt.Errorf("could not set @app/web name in %s (TanStack CLI output changed?)", path)
 	}
+	// The CLI writes a `pnpm.onlyBuiltDependencies` block in the web package;
+	// pnpm ignores it outside the workspace root (it lives in the root
+	// package.json instead), so drop it to silence the install warning.
+	s = stripWebPnpmBlock(s)
 	return os.WriteFile(path, []byte(s), 0o644)
+}
+
+// webPnpmBlockRe matches the trailing `,"pnpm": { ... }` object the TanStack
+// CLI appends to the web package.json (with its leading comma) right before the
+// closing brace of the document. Go's RE2 has no lookahead, so the final `}` is
+// captured and restored. Non-greedy inner match stops at the block's own `}`.
+var webPnpmBlockRe = regexp.MustCompile(`(?s),\s*"pnpm"\s*:\s*\{.*?\}\s*(\n?\})\s*$`)
+
+func stripWebPnpmBlock(s string) string {
+	return webPnpmBlockRe.ReplaceAllString(s, "$1")
 }
 
 // ensureMachineConfig checks the two prerequisites for fetching the

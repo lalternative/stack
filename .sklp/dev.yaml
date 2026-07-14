@@ -6,9 +6,20 @@ env_files:
   - .env.local
 
 services:
+  postgres:
+    run: |
+      docker run --rm --name stack-postgres \
+        -e POSTGRES_USER=app -e POSTGRES_PASSWORD=app -e POSTGRES_DB=app \
+        -p 5432:5432 postgres:16-alpine
+    ready:
+      tcp: localhost:5432
+      timeout: 30s
+
   core:
     run: go run .
     workdir: apps/core
+    depends_on:
+      - postgres
     ready:
       http: http://localhost:4100/health
       timeout: 90s

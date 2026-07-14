@@ -37,15 +37,17 @@ func main() {
 	}
 	defer shutdown(ctx)
 
-	dbPath := os.Getenv("DUCKDB_PATH")
-	if dbPath == "" {
-		dbPath = "./data/app.duckdb"
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		log.Fatal("DATABASE_URL is required")
 	}
-	exec, err := db.Open(dbPath)
+	pool, err := db.Open(ctx, dbURL)
 	if err != nil {
 		log.Fatalf("db open: %v", err)
 	}
-	if err := db.Migrate(ctx, exec, "./migrations/duckdb"); err != nil {
+	defer pool.Close()
+
+	if err := db.Migrate(ctx, pool, "./migrations/postgres"); err != nil {
 		log.Fatalf("db migrate: %v", err)
 	}
 
@@ -54,7 +56,7 @@ func main() {
 	e.Use(emw.Recover(), emw.RequestID(), observability.EchoMiddleware("core"))
 
 	health.Register(e)
-	project.NewService(exec).RegisterRoutes(e.Group("/api/v1"))
+	project.NewService(pool).RegisterRoutes(e.Group("/api/v1"))
 
 	port := os.Getenv("PORT")
 	if port == "" {

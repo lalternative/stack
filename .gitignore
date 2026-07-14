@@ -4,9 +4,9 @@ dist/
 .tanstack/
 bin/
 apps/cli/app
+apps/cli/sklp-create
 apps/core/core
 data/
-*.duckdb
 .env
 .env.local
 .sklp/cache/
