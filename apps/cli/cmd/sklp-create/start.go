@@ -28,45 +28,42 @@ const (
 )
 
 func newStartCmd() *cobra.Command {
-	var (
-		assumeYes bool
-		render    string
-	)
+	var assumeYes bool
 	cmd := &cobra.Command{
 		Use:   "start <name>",
 		Short: "Scaffold a new skalpai-style project in ./<name>",
 		Long: `Create a new project from the embedded stack template.
 
-The template ships the full stack: Postgres + Echo REST (DDD), NATS
-JetStream event consumers (eda lib), Better Auth, and a generated TS SDK.
+The template ships the Go backend: Postgres + Echo REST (DDD), NATS
+JetStream event consumers (eda lib), and a generated TS SDK (lib/front).
 Drop the parts you don't need (e.g. the NATS wiring) after scaffolding.
 
-The web app is built on TanStack Start. Choose how it renders:
-  --render ssr    Server-rendered via Nitro                  [default]
-  --render spa    Client-only single-page app (static shell)
+The web app (apps/web) is NOT embedded: it is scaffolded on the fly with
+the official TanStack CLI (` + "`pnpm dlx @tanstack/cli create`" + `), so every
+new project starts from an up-to-date TanStack Start app instead of a
+frozen, drifting template. Requires pnpm on PATH.
 
 On first run, prompts to set GOPRIVATE and a git insteadOf rule so the
 private skalpai sdk-go module can be fetched over SSH. Pass --yes to
 apply both without confirmation.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runStart(args[0], render, assumeYes)
+			return runStart(args[0], assumeYes)
 		},
 	}
 	cmd.Flags().BoolVarP(&assumeYes, "yes", "y", false, "apply machine config changes (GOPRIVATE, git insteadOf) without confirmation")
-	cmd.Flags().StringVarP(&render, "render", "r", "ssr", "web rendering mode: ssr | spa")
 	return cmd
 }
 
-func runStart(name, render string, assumeYes bool) error {
+func runStart(name string, assumeYes bool) error {
 	if !nameRe.MatchString(name) {
 		return fmt.Errorf("name must be kebab-case [a-z][a-z0-9-]*, got %q", name)
 	}
-	if render != "ssr" && render != "spa" {
-		return fmt.Errorf("unknown --render %q (want: ssr, spa)", render)
-	}
 	if _, err := os.Stat(name); err == nil {
 		return fmt.Errorf("./%s already exists", name)
+	}
+	if _, err := exec.LookPath("pnpm"); err != nil {
+		return fmt.Errorf("pnpm not found on PATH — required to scaffold the web app: %w", err)
 	}
 
 	if err := ensureMachineConfig(assumeYes); err != nil {
@@ -76,11 +73,11 @@ func runStart(name, render string, assumeYes bool) error {
 	if err := extractTemplate(templateFS, templateRoot, name); err != nil {
 		return fmt.Errorf("extract template: %w", err)
 	}
-	// Apply the render mode BEFORE rename: the SPA variant writes files that
-	// carry @app/ placeholders (vite.config, Caddyfile, Dockerfile.web), so
-	// they must be in place before rename rewrites the placeholders.
-	if err := applyRenderMode(name, render); err != nil {
-		return fmt.Errorf("set render mode: %w", err)
+	// Generate the web app fresh with the official TanStack CLI, then rewire it
+	// into the stack (name, port). Done BEFORE rename so the @app/ placeholders
+	// we write are rewritten alongside the rest of the template.
+	if err := scaffoldWeb(name); err != nil {
+		return fmt.Errorf("scaffold web app: %w", err)
 	}
 	if err := rename(name); err != nil {
 		return fmt.Errorf("rename: %w", err)
@@ -92,7 +89,7 @@ func runStart(name, render string, assumeYes bool) error {
 		fmt.Fprintf(os.Stderr, "warn: git init failed (%v) — continuing\n", err)
 	}
 
-	fmt.Printf("✓ created ./%s (render=%s)\n\n", name, render)
+	fmt.Printf("✓ created ./%s\n\n", name)
 	fmt.Printf("next:\n")
 	fmt.Printf("  cd %s\n", name)
 	fmt.Printf("  git config core.hooksPath .githooks\n")
@@ -100,79 +97,47 @@ func runStart(name, render string, assumeYes bool) error {
 	return nil
 }
 
-// applyRenderMode shapes the generated web app for the chosen rendering mode.
-//
-// The template ships the SSR variant (TanStack Start + Nitro). For "ssr" we
-// just bake the env-driven flag to a literal. For "spa" we convert the app to
-// a true client-only Vite SPA — TanStack Router (no Start server, no shell
-// prerender), with a classic index.html + client entry. This sidesteps
-// TanStack Start's SPA shell-prerender, which is not viable here.
-func applyRenderMode(name, render string) error {
-	web := filepath.Join(name, "apps", "web")
-	if _, err := os.Stat(web); err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
+// scaffoldWeb generates apps/web on the fly with the official TanStack CLI
+// (React + Nitro SSR + TanStack Query), then rewires it into the stack:
+// package name @app/web and dev/preview on the stack port (5273). The stack's
+// dev/CI/build/publish all reference apps/web + @app/web, so those two must
+// match; everything else is left as the CLI produced it (kept up to date).
+func scaffoldWeb(name string) error {
+	// Absolute target so the CLI writes into the generated project regardless
+	// of the process cwd.
+	abs, err := filepath.Abs(filepath.Join(name, "apps", "web"))
+	if err != nil {
 		return err
 	}
-
-	if render != "spa" {
-		// SSR is the template's native shape — nothing to transform.
-		return nil
+	args := []string{
+		"dlx", "@tanstack/cli", "create",
+		"--framework", "React",
+		"--target-dir", abs,
+		"--package-manager", "pnpm",
+		"--deployment", "nitro",
+		"--add-ons", "tanstack-query",
+		"--toolchain", "eslint",
+		"--no-git", "--no-install", "--no-examples",
+		"--non-interactive",
 	}
-
-	// SPA: replace the Start/Nitro setup with a client-only Vite app.
-	writes := map[string]string{
-		"vite.config.ts":           spaViteConfig,
-		"index.html":               spaIndexHTML,
-		"src/main.tsx":             spaMainTSX,
-		"src/routes/__root.tsx":    spaRootTSX,
-		"src/routes/index.tsx":     spaIndexRoute,
-		"Caddyfile":                caddyfile,
+	cmd := exec.Command("pnpm", args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("pnpm dlx @tanstack/cli create: %w", err)
 	}
-	for rel, content := range writes {
-		target := filepath.Join(web, rel)
-		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-			return err
-		}
-		if err := os.WriteFile(target, []byte(content), 0o644); err != nil {
-			return err
-		}
-	}
-	// Better Auth needs the TanStack Start server (better-auth runs server-side).
-	// A SPA has no server, so drop the auth wiring entirely: the generated SPA
-	// ships without auth, and the Caddyfile above serves the static build and
-	// reverse-proxies /api to the Go core. Re-add auth by switching to SSR.
-	authPaths := []string{
-		"src/lib",                   // auth.ts, db.ts, session/token helpers (all server-side)
-		"src/routes/api",            // api/auth/$ + api/core/$ server routes
-		"src/routes/_protected.tsx", // pathless auth guard
-		"src/routes/_protected",     // protected routes (index lives here in SSR)
-		"src/routes/login.tsx",
-		"src/routes/signup.tsx",
-		"src/routes/verify-email.tsx",
-	}
-	for _, rel := range authPaths {
-		if err := os.RemoveAll(filepath.Join(web, rel)); err != nil {
-			return err
-		}
-	}
-	// The SSR-only server entry script is meaningless for a SPA; drop it so the
-	// generated package.json does not advertise a `node .output/server` start.
-	if err := stripStartScript(filepath.Join(web, "package.json")); err != nil {
+	if err := rewireWebPackageJSON(filepath.Join(abs, "package.json")); err != nil {
 		return err
 	}
-	// The default Dockerfile.web builds the Nitro SSR server (node .output).
-	// A SPA has no server: rewrite it to build the static bundle and serve it
-	// with Caddy (the Caddyfile written above), matching the SPA runtime.
-	if err := os.WriteFile(filepath.Join(name, "Dockerfile.web"), []byte(dockerfileWebSPA), 0o644); err != nil {
-		return err
-	}
-	return nil
+	return relaxWebTSConfig(filepath.Join(abs, "tsconfig.json"))
 }
 
-// stripStartScript removes the Nitro-only "start" script from package.json.
-func stripStartScript(path string) error {
+// relaxWebTSConfig turns off noUnusedLocals/noUnusedParameters in the generated
+// tsconfig. The TanStack CLI ships a router.tsx with unused imports, so a fresh
+// scaffold fails `tsc --noEmit` out of the box — and the stack CI runs exactly
+// that. eslint still flags real unused code; this only stops the generator's
+// own dead imports from turning the very first CI run red.
+func relaxWebTSConfig(path string) error {
 	b, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -180,183 +145,37 @@ func stripStartScript(path string) error {
 		}
 		return err
 	}
-	s := strings.Replace(string(b),
-		"\n    \"start\": \"node .output/server/index.mjs\",", "", 1)
-	if s == string(b) {
-		return nil
-	}
+	s := string(b)
+	s = strings.ReplaceAll(s, `"noUnusedLocals": true`, `"noUnusedLocals": false`)
+	s = strings.ReplaceAll(s, `"noUnusedParameters": true`, `"noUnusedParameters": false`)
 	return os.WriteFile(path, []byte(s), 0o644)
 }
 
-// --- SPA variant files (client-only Vite + TanStack Router) ---
-
-const spaViteConfig = `import { defineConfig } from "vite";
-import tsconfigPaths from "vite-tsconfig-paths";
-import viteReact from "@vitejs/plugin-react";
-import tailwindcss from "@tailwindcss/vite";
-import { tanstackRouter } from "@tanstack/router-plugin/vite";
-
-// Client-only single-page app: TanStack Router (no SSR), mounted from
-// index.html via src/main.tsx. The API is reached through the dev proxy.
-export default defineConfig({
-  server: {
-    port: 5273,
-    proxy: { "/api": "http://localhost:4100" },
-  },
-  plugins: [
-    tsconfigPaths({ projects: ["./tsconfig.json"] }),
-    tailwindcss(),
-    tanstackRouter({ target: "react", autoCodeSplitting: true }),
-    viteReact(),
-  ],
-});
-`
-
-const spaIndexHTML = `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>app</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
-`
-
-const spaMainTSX = `import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import { RouterProvider } from "@tanstack/react-router";
-import { getRouter } from "./router";
-import "./styles.css";
-
-const router = getRouter();
-
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <RouterProvider router={router} />
-  </StrictMode>,
-);
-`
-
-// SPA root: a plain layout route (no shellComponent / HeadContent / Scripts,
-// which are TanStack Start server primitives). The document lives in
-// index.html; this just renders the matched route into #root.
-const spaRootTSX = `import { Outlet, createRootRoute } from "@tanstack/react-router";
-
-export const Route = createRootRoute({
-  notFoundComponent: NotFound,
-  component: RootLayout,
-});
-
-function RootLayout() {
-  return <Outlet />;
-}
-
-function NotFound() {
-  return (
-    <main className="mx-auto max-w-2xl p-6 font-sans">
-      <h1 className="text-2xl font-semibold tracking-tight">404</h1>
-      <p className="mt-2 text-sm text-gray-600">Page not found.</p>
-    </main>
-  );
-}
-`
-
-// spaIndexRoute is the public home route for the SPA. The SSR template's index
-// lives under the auth guard (_protected/index.tsx), which is removed for SPA;
-// this restores a plain public landing at "/".
-const spaIndexRoute = `import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-
-export const Route = createFileRoute("/")({
-  component: Home,
-});
-
-type Project = { id: string; name: string };
-
-function Home() {
-  const [projects, setProjects] = useState<Project[]>([]);
-
-  useEffect(() => {
-    // /api is reverse-proxied to the Go core (Caddyfile in prod, Vite proxy in
-    // dev). This SPA ships without auth — switch to SSR for better-auth.
-    fetch("/api/v1/projects")
-      .then((r) => (r.ok ? r.json() : []))
-      .then(setProjects)
-      .catch(() => {});
-  }, []);
-
-  return (
-    <main className="mx-auto max-w-2xl p-6 font-sans">
-      <h1 className="text-2xl font-semibold tracking-tight">app</h1>
-      <p className="mt-2 text-sm text-gray-600">
-        Skalpai-style stack (SPA). Edit{" "}
-        <code className="rounded bg-gray-100 px-1">src/routes/index.tsx</code> to
-        begin.
-      </p>
-      <ul className="mt-4 list-disc pl-5">
-        {projects.map((p) => (
-          <li key={p.id}>{p.name}</li>
-        ))}
-      </ul>
-    </main>
-  );
-}
-`
-
-// caddyfile serves the SPA static build and reverse-proxies /api to the Go
-// core. A SPA has no server runtime, so Caddy is the production front:
-// SPA fallback (try_files → index.html) + same-origin /api proxy (no CORS).
-const caddyfile = `# Production front for the SPA build.
-# Run: caddy run --config ./Caddyfile
-# CORE_UPSTREAM defaults to the in-cluster core service.
-{
-	auto_https off
-}
-
-:8080 {
-	encode gzip
-
-	# API requests are reverse-proxied to the Go core (same-origin, no CORS).
-	handle /api/* {
-		reverse_proxy {$CORE_UPSTREAM:http://core:4100}
+// rewireWebPackageJSON aligns the generated web package with the stack: the
+// name must be @app/web (the stack filters `pnpm --filter @app/web ...`), and
+// the dev/preview servers must bind the stack port (5273, proxied by sklp dev).
+func rewireWebPackageJSON(path string) error {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return err
 	}
-
-	# Everything else is the static SPA build with client-side routing fallback.
-	handle {
-		root * /srv
-		try_files {path} /index.html
-		file_server
+	s := string(b)
+	repl := []struct{ from, to string }{
+		{`"name": "web"`, `"name": "@app/web"`},
+		{`"dev": "vite dev --port 3000"`, `"dev": "vite dev --port 5273"`},
+		{`"preview": "vite preview"`, `"preview": "vite preview --port 5273"`},
+		// The stack CI runs `pnpm --filter @app/web typecheck`; the TanStack CLI
+		// ships `lint`/`test` but no typecheck script, so add one.
+		{`"lint": "eslint",`, "\"lint\": \"eslint\",\n    \"typecheck\": \"tsc --noEmit\","},
 	}
+	for _, r := range repl {
+		s = strings.Replace(s, r.from, r.to, 1)
+	}
+	if !strings.Contains(s, `"name": "@app/web"`) {
+		return fmt.Errorf("could not set @app/web name in %s (TanStack CLI output changed?)", path)
+	}
+	return os.WriteFile(path, []byte(s), 0o644)
 }
-`
-
-// dockerfileWebSPA is the SPA replacement for the default (SSR/Nitro)
-// Dockerfile.web: build the static Vite bundle, then serve it with Caddy
-// (SPA fallback + /api reverse proxy). A SPA has no node server, so there is
-// no `.output/server` to run.
-const dockerfileWebSPA = `# web image — static SPA bundle on Caddy
-# Pin pnpm explicitly (never @latest in Dockerfile.web — see memory).
-FROM node:22-bookworm AS build
-RUN corepack enable && corepack prepare pnpm@10.27.0 --activate
-WORKDIR /src
-ENV CI=true
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY apps/web/package.json ./apps/web/package.json
-COPY lib/front/package.json ./lib/front/package.json
-RUN pnpm install --frozen-lockfile
-COPY apps/web ./apps/web
-COPY lib/front ./lib/front
-RUN pnpm --filter @app/web build
-
-FROM caddy:2-alpine
-COPY apps/web/Caddyfile /etc/caddy/Caddyfile
-COPY --from=build /src/apps/web/dist /srv
-EXPOSE 8080
-`
 
 // ensureMachineConfig checks the two prerequisites for fetching the
 // private skalpai sdk-go module and offers to set them. Without these,
@@ -462,6 +281,9 @@ func rename(name string) error {
 		if err != nil || d.IsDir() {
 			return err
 		}
+		// The generated web app carries no @app/ placeholders except the ones we
+		// wrote (package name); its node_modules is absent (--no-install), so the
+		// whole tree is safe to walk.
 		b, err := os.ReadFile(p)
 		if err != nil {
 			return err

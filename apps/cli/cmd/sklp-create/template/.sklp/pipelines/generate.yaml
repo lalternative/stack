@@ -2,29 +2,22 @@ version: 1
 kind: pipeline
 name: generate
 description: |
-  Regenerate the artefacts that are checked into the repo but produced by
-  tooling: the core OpenAPI spec (swag) and the typed React Query client
-  (orval).
+  Regenerate the checked-in OpenAPI spec from the annotated Echo handlers.
 
-  The chain is swag -> apps/core/docs/swagger.json -> orval -> lib/front/src/api:
-    swagger    regenerates apps/core/docs from the handler annotations
-    client-ts  regenerates lib/front/src/api (typed react-query client)
+  swagger    regenerates apps/core/docs from the handler annotations
 
-  The generated client is consumed as source (no build step). `swag` comes from
-  the runner toolchain (.sklp/space.yaml go_tools), so no ad-hoc `go install`.
+  `swag` comes from the runner toolchain (.sklp/space.yaml go_tools), so no
+  ad-hoc `go install`.
+
+  The web app is a fresh TanStack Start scaffold and no longer generates the
+  orval react-query client; rewire lib/front against apps/core/docs by hand if
+  you need the typed client.
 
 tools:
   go: "1.25.0"
-  node: "22.19.0"
-  pnpm: "10.27.0"
 
 steps:
   - name: swagger
     tools: [go]
     run: |
       cd apps/core && swag init -g main.go --parseDependency --parseInternal -q
-
-  - name: client-ts
-    depends_on: [swagger]
-    tools: [node, pnpm]
-    run: pnpm --filter @app/web generate:api

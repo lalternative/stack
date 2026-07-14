@@ -44,11 +44,6 @@ scopes:
     - "Dockerfile"
     - "go.work"
     - "go.work.sum"
-  web:
-    - "apps/web/**"
-    - "package.json"
-    - "pnpm-lock.yaml"
-    - "Dockerfile.web"
 
 steps:
   - name: core-image
@@ -57,12 +52,4 @@ steps:
     context: .
     dockerfile: Dockerfile
     image: rg.fr-par.scw.cloud/skaplai/core
-    tag: "{{ publish_tag }}"
-
-  - name: web-image
-    kind: docker-build
-    scope: [web]
-    context: .
-    dockerfile: Dockerfile.web
-    image: rg.fr-par.scw.cloud/skaplai/web
     tag: "{{ publish_tag }}"
