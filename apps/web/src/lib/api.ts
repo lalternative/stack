@@ -1,8 +1,23 @@
-import { configureCoreClient, getCoreAPI } from "@app/sdk";
+import { configureCoreClient } from "@app/sdk";
 
-// Generated routes are relative to the API basePath (/api/v1). In dev Vite
-// serves same-origin; override the origin via env in prod.
-const origin = import.meta.env["VITE_CORE_API_URL"]?.trim().replace(/\/+$/, "") || "";
-configureCoreClient({ baseURL: `${origin}/api/v1` });
+// The scaffold runs SSR (Nitro) + client. Generated routes are relative to the
+// core basePath (/api/v1), so we only pick the origin here:
+//
+//  - Server (SSR/Nitro): relative URLs don't resolve — a fetch needs an
+//    absolute origin. Use CORE_API_URL (e.g. http://localhost:4100), falling
+//    back to the dev core port so SSR loaders work out of the box.
+//  - Browser: same-origin; Vite proxies /api -> core in dev, and in prod the
+//    web host proxies it. VITE_CORE_API_URL can override the origin.
+function resolveOrigin(): string {
+  if (import.meta.env.SSR) {
+    return (
+      process.env["CORE_API_URL"]?.trim().replace(/\/+$/, "") ||
+      "http://localhost:4100"
+    );
+  }
+  return (
+    import.meta.env["VITE_CORE_API_URL"]?.trim().replace(/\/+$/, "") || ""
+  );
+}
 
-export const coreAPI = getCoreAPI();
+configureCoreClient({ baseURL: `${resolveOrigin()}/api/v1` });
