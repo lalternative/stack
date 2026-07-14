@@ -14,7 +14,7 @@ apps/core/<context>/
 ├── application/<usecase>/
 │                       ── one folder per command/query. Holds Command|Query +
 │                          Handler. No HTTP, no SQL.
-└── infrastructure/     ── concrete repositories (duckdb_repository.go, ...)
+└── infrastructure/     ── concrete repositories (postgres_repository.go, ...)
 ```
 
 Rationale: same shape as `apps/core/project/` in skalpai. New contexts copy
@@ -22,10 +22,9 @@ the folder, no debate.
 
 ## Data access seam
 
-`apps/core/pkg/db.Executor` is the only thing repositories see. Backed by
-DuckDB out of the box; swap by implementing the three methods on a new
-driver. Migrations are file-based SQL under `migrations/duckdb/`, applied in
-lexical order at boot.
+Repositories receive a `*pgxpool.Pool` (see `apps/core/pkg/db`). Postgres via
+pgx out of the box. Migrations are file-based SQL under `migrations/postgres/`,
+applied in lexical order at boot (must be idempotent — they run every boot).
 
 ## Observability seam
 

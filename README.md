@@ -30,7 +30,7 @@ rewrites the Go module paths (`app/` → `<name>/`) and npm scopes
 ```
 .sklp/                 dev.yaml + tasks/{ci,build,publish,secops}.yaml
 apps/
-  core/                Go 1.25 + Echo v4 + DuckDB (DDD per bounded context)
+  core/                Go 1.25 + Echo v4 + Postgres (pgx) (DDD per bounded context)
   web/                 React 19 + TanStack Router + Vite
   cli/                 Project CLI binary (cobra)
 infra/nginx/           Static bundle nginx config

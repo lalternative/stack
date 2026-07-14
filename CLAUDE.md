@@ -8,7 +8,7 @@ and the `sklp-create` CLI. It has no frontend or TS SDK of its own — a
 generated project gets its web app scaffolded on the fly (see below).
 
 ## Stack
-- **Backend**: Go 1.25 + Echo v4 + DuckDB (embedded) — port 4100
+- **Backend**: Go 1.25 + Echo v4 + Postgres (pgx/pgxpool) — port 4100
 - **CLI**: cobra-based scaffolder + project CLI (`apps/cli`)
 - **Pipeline**: host-installed `sklp` CLI (NOT vendored), config in `.sklp/`
 - **Frontend (generated projects only)**: `sklp-create start` scaffolds
@@ -20,8 +20,8 @@ generated project gets its web app scaffolded on the fly (see below).
 ## Architecture
 - DDD per bounded context under `apps/core/<context>/`
 - Pattern: `domain/ → application/<usecase>/ → infrastructure/ → api.go + dto.go + bootstrap.go`
-- Database abstraction via `pkg/db.Executor` interface
-- File-based SQL migrations in `apps/core/migrations/duckdb/`
+- Postgres access via `pkg/db` (`*pgxpool.Pool`); repositories take the pool
+- File-based SQL migrations in `apps/core/migrations/postgres/`, applied at boot (idempotent)
 - Observability wired at boot through `apps/core/observability` using `@digstack/sdk-go`
 
 ## Conventions
