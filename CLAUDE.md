@@ -3,12 +3,19 @@
 Skalpai-style application stack. Generated from this template, each new
 app starts with the full skalpai dev workflow + observability already wired.
 
+This repo is **backend + scaffolder**, not a full app: it holds the Go core
+and the `sklp-create` CLI. It has no frontend or TS SDK of its own — a
+generated project gets its web app scaffolded on the fly (see below).
+
 ## Stack
 - **Backend**: Go 1.25 + Echo v4 + DuckDB (embedded) — port 4100
-- **Frontend**: React 19 + TanStack Router + Tailwind v4 + shadcn/ui (`new-york`, zinc) — port 5273
-- **SDK**: `apps/sdk` — typed TS client generated from the core OpenAPI (swag → orval → tsup)
-- **CLI**: cobra-based project CLI (`apps/cli`)
+- **CLI**: cobra-based scaffolder + project CLI (`apps/cli`)
 - **Pipeline**: host-installed `sklp` CLI (NOT vendored), config in `.sklp/`
+- **Frontend (generated projects only)**: `sklp-create start` scaffolds
+  `apps/web` on the fly with the official TanStack CLI
+  (`pnpm dlx @tanstack/cli create` — React 19 + TanStack Start + Nitro SSR
+  + tanstack-query, port 5273). Nothing frontend is embedded or checked in
+  here, so it never drifts.
 
 ## Architecture
 - DDD per bounded context under `apps/core/<context>/`
@@ -23,8 +30,8 @@ app starts with the full skalpai dev workflow + observability already wired.
 - Do NOT include `Co-Authored-By: Claude` or any Anthropic co-author
 - Use `github.com/google/uuid` for IDs
 - JWT middleware extracts user via `middleware.GetUser(c)`
-- Frontend: import UI from the `@/` alias (`@/components`, `@/lib/utils`); compose classes with `cn()`; add shadcn components via `pnpm dlx shadcn@latest add <name>`
-- The TS API client is generated, never hand-written: annotate Echo handlers with swaggo `// @...`, then `sklp run generate` (swag → orval → tsup). `apps/sdk/src/generated` and `apps/core/docs` are checked in; the CI `sdk-up-to-date` step fails on drift.
+- The core OpenAPI spec is generated from swaggo annotations: annotate Echo handlers with `// @...`, then `sklp run generate` (swag → `apps/core/docs`). `apps/core/docs` is checked in; the CI `swagger-up-to-date` step fails on drift.
+- When editing the scaffolder, mirror any template change under `apps/cli/cmd/sklp-create/template/` (drift is caught by PR diff, not auto-synced).
 
 ## Feature / PR / Publish flow
 
