@@ -12,11 +12,3 @@ services:
     ready:
       http: http://localhost:4100/health
       timeout: 90s
-
-  web:
-    run: pnpm --filter @app/web dev
-    depends_on:
-      - core
-    ready:
-      http: http://localhost:5273
-      timeout: 60s

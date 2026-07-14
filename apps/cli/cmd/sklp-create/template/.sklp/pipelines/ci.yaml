@@ -61,13 +61,14 @@ steps:
     tools: [node, pnpm]
     run: pnpm --filter @app/front lint
 
-  # Fails on drift: the checked-in OpenAPI spec + generated client must match
-  # what the annotated handlers produce. `swag` comes from the runner
-  # toolchain (.sklp/space.yaml go_tools).
-  - name: api-up-to-date
-    scope: [front, core, shared]
-    tools: [go, node, pnpm]
+  # Fails on drift: the checked-in OpenAPI spec must match what the annotated
+  # handlers produce. `swag` comes from the runner toolchain
+  # (.sklp/space.yaml go_tools). The web app is a fresh TanStack Start scaffold
+  # and no longer drives orval client generation; rewire lib/front to the spec
+  # by hand if you need the typed client.
+  - name: swagger-up-to-date
+    scope: [core, shared]
+    tools: [go]
     run: |
       cd apps/core && swag init -g main.go --parseDependency --parseInternal -q
-      cd ../.. && pnpm --filter @app/web generate:api
-      git diff --exit-code -- apps/core/docs lib/front/src/api
+      cd ../.. && git diff --exit-code -- apps/core/docs

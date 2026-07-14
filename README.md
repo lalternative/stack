@@ -75,10 +75,15 @@ apps/
     main.go              root + version
     start.go             `sklp-create start <name>` (NOT in generated projects)
     template/            checked-in copy of the project template
-  core/, web/, ...       the actual source code
+  core/, sdk/            the actual source code
 ```
 
-Touching anything under `apps/core/`, `apps/web/`, or `.sklp/` requires the
-same change in `apps/cli/cmd/sklp-create/template/` for the scaffolder to
-ship the update. (Drift is gated by visual diff on PRs — there is no
-auto-sync.)
+The web app is **not** embedded: `sklp-create start` scaffolds it on the fly
+with the official TanStack CLI (`pnpm dlx @tanstack/cli create`), so every new
+project gets an up-to-date TanStack Start app rather than a frozen, drifting
+copy. This repo therefore has no `apps/web` of its own — it is backend +
+scaffolder.
+
+Touching anything under `apps/core/` or `.sklp/` requires the same change in
+`apps/cli/cmd/sklp-create/template/` for the scaffolder to ship the update.
+(Drift is gated by visual diff on PRs — there is no auto-sync.)

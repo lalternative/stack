@@ -25,13 +25,10 @@ scopes:
     - "go.work.sum"
   cli:
     - "apps/cli/**"
-  web:
-    - "apps/web/**"
-    - "package.json"
-    - "pnpm-lock.yaml"
-    - "Dockerfile.web"
   sdk:
     - "apps/sdk/**"
+    - "package.json"
+    - "pnpm-lock.yaml"
   shared:
     - ".sklp/**"
     - "Dockerfile"
@@ -52,16 +49,6 @@ steps:
     scope: [cli, shared]
     tools: [go]
     run: cd apps/cli && go test ./...
-
-  - name: lint-web
-    scope: [web, shared]
-    tools: [node, pnpm]
-    run: pnpm --filter @app/web lint
-
-  - name: typecheck-web
-    scope: [web, shared]
-    tools: [node, pnpm]
-    run: pnpm --filter @app/web typecheck
 
   - name: sdk-up-to-date
     scope: [sdk, core, shared]

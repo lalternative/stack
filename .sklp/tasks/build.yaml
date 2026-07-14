@@ -1,12 +1,10 @@
 version: 1
 kind: pipeline
 name: build
-description: Build the project CLI binary and frontend bundles.
+description: Build the project CLI binary and core service.
 
 tools:
   go: "1.25.0"
-  node: "22.19.0"
-  pnpm: "10.27.0"
 
 steps:
   - name: build-cli
@@ -20,7 +18,3 @@ steps:
     run: |
       mkdir -p bin
       cd apps/core && go build -o ../../bin/core .
-
-  - name: build-web
-    tools: [node, pnpm]
-    run: pnpm --filter @app/web build
