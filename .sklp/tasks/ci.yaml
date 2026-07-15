@@ -42,7 +42,11 @@ steps:
   - name: test-cli
     scope: [cli, shared]
     tools: [go]
-    run: cd apps/cli && go test ./...
+    # Skip cmd/sklp-create/template: it's //go:embed content (go.mod.tmpl,
+    # not a real module), not compilable code of the app/cli module.
+    # `go list -e` tolerates the template's unresolvable imports so the
+    # filter yields only the real packages with a clean exit.
+    run: cd apps/cli && go test $(go list -e ./... | grep -v /template/)
 
   # Fails on drift: the checked-in OpenAPI spec must match what the annotated
   # handlers produce.
