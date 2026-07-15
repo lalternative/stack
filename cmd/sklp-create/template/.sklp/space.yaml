@@ -3,7 +3,7 @@ runner:
   registry_auth_secret: scw-registry-credentials
 
   toolchain:
-    go: "1.25.0"
+    go: "1.26.5"
     node: "22.19.0"
     pnpm: "10.27.0"
     gitleaks: "8.18.4"

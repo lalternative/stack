@@ -34,7 +34,7 @@ vulnerabilities:
     prod_only: true
 
 tools:
-  go: "1.25.0"
+  go: "1.26.5"
   node: "22.19.0"
   pnpm: "10.27.0"
 

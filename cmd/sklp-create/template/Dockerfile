@@ -1,5 +1,5 @@
 # core image — distroless Go binary
-FROM golang:1.25-bookworm AS build
+FROM golang:1.26-bookworm AS build
 WORKDIR /src
 COPY go.work go.work.sum ./
 COPY apps/core ./apps/core
