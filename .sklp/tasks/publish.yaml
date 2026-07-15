@@ -33,10 +33,7 @@ vulnerabilities:
     severity: [high, critical]
     prod_only: true
 
-tools:
-  go: "1.25.0"
-  node: "22.19.0"
-  pnpm: "10.27.0"
+# Tool versions come from .sklp/space.yaml (go/node/pnpm).
 
 scopes:
   core:

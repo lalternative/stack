@@ -23,3 +23,13 @@ services:
     ready:
       http: http://localhost:4100/health
       timeout: 90s
+
+# One-shot jobs run once at startup and exit 0 (their exit is the ready
+# signal, never a stack-wide failure).
+jobs:
+  # The CLI (apps/cli) is the sklp-create scaffolder, not a long-running
+  # service — build it into bin/ so it's on hand while developing.
+  build-cli:
+    run: go build -o ../../bin/sklp-create ./cmd/sklp-create
+    workdir: apps/cli
+    oneshot: true

@@ -3,15 +3,14 @@ kind: pipeline
 name: build
 description: Build the project CLI binary and core service.
 
-tools:
-  go: "1.25.0"
+# Tool versions come from .sklp/space.yaml; steps only name which they use.
 
 steps:
   - name: build-cli
     tools: [go]
     run: |
       mkdir -p bin
-      cd apps/cli && go build -o ../../bin/app ./cmd/app
+      cd apps/cli && go build -o ../../bin/sklp-create ./cmd/sklp-create
 
   - name: build-core
     tools: [go]

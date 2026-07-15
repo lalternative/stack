@@ -12,8 +12,8 @@ inputs:
     required: false
     default: origin/main
 
-tools:
-  go: "1.25.0"
+# Tool versions come from .sklp/space.yaml (go + swag via go_tools); steps
+# only name which ones they use.
 
 scopes:
   core:
@@ -48,8 +48,7 @@ steps:
   # handlers produce.
   - name: swagger-up-to-date
     scope: [core, shared]
-    tools: [go]
+    tools: [go, swag]
     run: |
-      go install github.com/swaggo/swag/cmd/swag@latest
       cd apps/core && swag init -g main.go --parseDependency --parseInternal -q
       cd ../.. && git diff --exit-code -- apps/core/docs
