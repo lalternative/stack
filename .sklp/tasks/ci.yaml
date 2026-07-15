@@ -12,8 +12,8 @@ inputs:
     required: false
     default: origin/main
 
-tools:
-  go: "1.25.0"
+# Tool versions come from .sklp/space.yaml (go + swag via go_tools); steps
+# only name which ones they use.
 
 scopes:
   core:
@@ -42,14 +42,17 @@ steps:
   - name: test-cli
     scope: [cli, shared]
     tools: [go]
-    run: cd apps/cli && go test ./...
+    # Skip cmd/sklp-create/template: it's //go:embed content (go.mod.tmpl,
+    # not a real module), not compilable code of the app/cli module.
+    # `go list -e` tolerates the template's unresolvable imports so the
+    # filter yields only the real packages with a clean exit.
+    run: cd apps/cli && go test $(go list -e ./... | grep -v /template/)
 
   # Fails on drift: the checked-in OpenAPI spec must match what the annotated
   # handlers produce.
   - name: swagger-up-to-date
     scope: [core, shared]
-    tools: [go]
+    tools: [go, swag]
     run: |
-      go install github.com/swaggo/swag/cmd/swag@latest
       cd apps/core && swag init -g main.go --parseDependency --parseInternal -q
       cd ../.. && git diff --exit-code -- apps/core/docs
