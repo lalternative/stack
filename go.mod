@@ -1,4 +1,4 @@
-module app/cli
+module github.com/lalternative/stack
 
 go 1.25.0
 
