@@ -12,7 +12,6 @@ need (e.g. the NATS wiring) after scaffolding.
 
 ```bash
 cp .env.example .env                # fill SKALPAI_PROJECT_ID + SKALPAI_API_KEY
-git config core.hooksPath .githooks
 sklp dev stack                      # boots core (4100) + web (5273)
 ```
 
@@ -59,8 +58,8 @@ Source of truth: `.sklp/space.yaml` (runner recipe), `.sklp/stack/dev.yaml`
 | `sklp run secops` | Security scan: gitleaks + semgrep + govulncheck + trivy |
 | `sklp run publish` | Build, scan (Trivy), push impacted images (main only) |
 
-**No GitHub Actions** drive `sklp` pipelines. Local pre-push gates use
-`.githooks/pre-commit`. Remote dispatch is the skalpai UI.
+**No GitHub Actions** drive `sklp` pipelines. CI runs via `sklp flow end`
+before a PR (and again on the PR). Remote dispatch is the skalpai UI.
 
 ## Observability
 

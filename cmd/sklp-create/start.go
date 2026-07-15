@@ -92,7 +92,6 @@ func runStart(name string, assumeYes bool) error {
 	fmt.Printf("✓ created ./%s\n\n", name)
 	fmt.Printf("next:\n")
 	fmt.Printf("  cd %s\n", name)
-	fmt.Printf("  git config core.hooksPath .githooks\n")
 	fmt.Printf("  sklp dev stack\n")
 	return nil
 }
@@ -301,7 +300,7 @@ func extractTemplate(fsys embed.FS, root, dst string) error {
 		// template/.../go.mod is shipped as go.mod.tmpl and restored here.
 		target = strings.TrimSuffix(target, ".tmpl")
 		mode := fs.FileMode(0o644)
-		if strings.HasSuffix(rel, ".sh") || strings.HasPrefix(rel, ".githooks/") {
+		if strings.HasSuffix(rel, ".sh") {
 			mode = 0o755
 		}
 		return os.WriteFile(target, b, mode)

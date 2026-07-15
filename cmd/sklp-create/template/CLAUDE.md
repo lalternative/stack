@@ -86,11 +86,8 @@ Other entry points:
 ## CI / triggers — NO GitHub Actions
 
 Do NOT add `.github/workflows/*.yml` that drive `sklp run`. The skalpai UI is
-the CI control plane (remote dispatch). Local pre-push gates use git hooks:
-
-```bash
-git config core.hooksPath .githooks
-```
+the CI control plane (remote dispatch). CI runs locally via `sklp flow end`
+before opening a PR, and again on the PR.
 
 ## Container registry
 

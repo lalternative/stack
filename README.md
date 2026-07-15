@@ -13,7 +13,6 @@ go install github.com/lalternative/stack/cmd/sklp-create@latest
 # Create a new project
 sklp-create start myapp
 cd myapp
-git config core.hooksPath .githooks
 sklp dev stack                      # boots postgres + nats + core (4100) + web (5273)
 ```
 
