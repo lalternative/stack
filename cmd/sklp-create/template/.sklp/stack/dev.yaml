@@ -1,0 +1,59 @@
+version: 1
+kind: devstack
+name: dev
+env_files:
+  - .env
+  - .env.local
+
+services:
+  # Dependencies are image: services so sklp dev's embedded runc backend pulls
+  # them into spacenet (reachable by service name), matching how CI/deploy run.
+  # A `run: docker run` service needs a docker binary inside the space and fails
+  # there ("docker: not found"); image: is the portable form.
+  postgres:
+    image: postgres:16-alpine
+    network: bridge
+    port: 5432
+    env:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: app
+    ready:
+      tcp: postgres:5432
+      timeout: 30s
+
+  nats:
+    image: nats:2.10-alpine
+    network: bridge
+    port: 4222
+    command: ["-js"]
+    ready:
+      tcp: nats:4222
+      timeout: 30s
+
+  core:
+    run: go run .
+    workdir: apps/core
+    port: 4100
+    depends_on:
+      - postgres
+      - nats
+    # Reach deps by service name inside spacenet (overrides the localhost URLs
+    # in .env, which are for running core straight on the host).
+    env:
+      DATABASE_URL: postgres://app:app@postgres:5432/app?sslmode=disable
+      NATS_URL: nats://nats:4222
+    ready:
+      http: /health
+      timeout: 90s
+
+  web:
+    run: pnpm --filter @app/web dev
+    port: 5273
+    depends_on:
+      - core
+    env:
+      API_URL: http://core:4100
+    ready:
+      http: http://localhost:5273
+      timeout: 60s

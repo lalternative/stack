@@ -1,15 +1,3 @@
-node_modules/
-dist/
-.next/
-.tanstack/
 bin/
-apps/cli/app
-apps/cli/sklp-create
-apps/core/core
-data/
-.env
-.env.local
-.sklp/cache/
-.sklp/logs/
+sklp-create
 .DS_Store
-*.tsbuildinfo

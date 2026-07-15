@@ -1,0 +1,23 @@
+version: 1
+kind: pipeline
+name: generate
+description: |
+  Regenerate the checked-in OpenAPI spec from the annotated Echo handlers.
+
+  swagger    regenerates apps/core/docs from the handler annotations
+
+  `swag` comes from the runner toolchain (.sklp/space.yaml go_tools), so no
+  ad-hoc `go install`.
+
+  The web app is a fresh TanStack Start scaffold and no longer generates the
+  orval react-query client; rewire lib/front against apps/core/docs by hand if
+  you need the typed client.
+
+tools:
+  go: "1.26.5"
+
+steps:
+  - name: swagger
+    tools: [go]
+    run: |
+      cd apps/core && swag init -g main.go --parseDependency --parseInternal -q

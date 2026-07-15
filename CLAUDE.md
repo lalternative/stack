@@ -1,87 +1,57 @@
 # stack
 
-Skalpai-style application stack. Generated from this template, each new
-app starts with the full skalpai dev workflow + observability already wired.
+Scaffolder for Skalpai-style application stacks. This repo is a **single Go
+module**: the `sklp-create` CLI and the embedded template it ships. There is no
+backend, `.sklp/`, frontend, or SDK at the root — all of that lives *inside*
+the template and only materialises in a generated project.
 
-This repo is **backend + scaffolder**, not a full app: it holds the Go core
-and the `sklp-create` CLI. It has no frontend or TS SDK of its own — a
-generated project gets its web app scaffolded on the fly (see below).
+## Layout
 
-## Stack
-- **Backend**: Go 1.25 + Echo v4 + Postgres (pgx/pgxpool) — port 4100
-- **CLI**: cobra-based scaffolder + project CLI (`apps/cli`)
-- **Pipeline**: host-installed `sklp` CLI (NOT vendored), config in `.sklp/`
-- **Frontend (generated projects only)**: `sklp-create start` scaffolds
-  `apps/web` on the fly with the official TanStack CLI
-  (`pnpm dlx @tanstack/cli create` — React 19 + TanStack Start + Nitro SSR
-  + tanstack-query, port 5273). Nothing frontend is embedded or checked in
-  here, so it never drifts.
+```
+cmd/sklp-create/
+  main.go        root + version
+  start.go       `sklp-create start <name>` (NOT copied into projects)
+  template/      the checked-in project template (backend + .sklp + Dockerfile)
+go.mod           module github.com/lalternative/stack
+```
 
-## Architecture
-- DDD per bounded context under `apps/core/<context>/`
-- Pattern: `domain/ → application/<usecase>/ → infrastructure/ → api.go + dto.go + bootstrap.go`
-- Postgres access via `pkg/db` (`*pgxpool.Pool`); repositories take the pool
-- File-based SQL migrations in `apps/core/migrations/postgres/`, applied at boot (idempotent)
-- Observability wired at boot through `apps/core/observability` using `@digstack/sdk-go`
+Edit the generated stack by editing `cmd/sklp-create/template/`. `start.go`
+rewrites module paths (`app/` → `<name>/`) and npm scopes (`@app/` → `@<name>/`)
+on extraction, then scaffolds `apps/web` on the fly with the official TanStack
+CLI (nothing frontend is embedded, so it never drifts). `pnpm` must be on PATH.
 
 ## Conventions
 - All code, comments, commit messages in English
 - Commits must include `Co-Authored-By: codesyl <codesyl@pm.me>`
 - Do NOT include `Co-Authored-By: Claude` or any Anthropic co-author
-- Use `github.com/google/uuid` for IDs
-- JWT middleware extracts user via `middleware.GetUser(c)`
-- The core OpenAPI spec is generated from swaggo annotations: annotate Echo handlers with `// @...`, then `sklp run generate` (swag → `apps/core/docs`). `apps/core/docs` is checked in; the CI `swagger-up-to-date` step fails on drift.
-- When editing the scaffolder, mirror any template change under `apps/cli/cmd/sklp-create/template/` (drift is caught by PR diff, not auto-synced).
 
-## Feature / PR / Publish flow
+## The template ships (into generated projects, not run here)
+- **Backend**: Go 1.25 + Echo v4 + Postgres (pgx), DDD per bounded context
+- **`.sklp/`**: dev.yaml + pipelines (ci/build/publish/secops) driven by the
+  host-installed `sklp` CLI
+- **Dockerfile**: distroless, runs as `USER nonroot`
+- Dev deps (postgres, nats) are `image:` services so `sklp dev`'s embedded runc
+  backend pulls them into spacenet — never `run: docker run` (no docker in the
+  space).
 
-Use the `sklp flow` helpers — they wrap this flow and, by creating a
-dedicated worktree per feature, let several features be worked on in
-parallel without branch-switching in a shared checkout. Prefer them over
-raw `git checkout -b`.
+Changes to the shipped stack go under `cmd/sklp-create/template/`; verify by
+scaffolding a throwaway project and running `sklp dev stack` in it.
 
-1. `sklp flow start <name>` — opens `feat/<name>` in a dedicated worktree
-   (default; `--branch` checks out in place instead). One worktree per
-   feature keeps parallel work isolated.
-2. `sklp run ci` before pushing.
-3. `sklp flow end --pr` — diffs vs `--onto`, runs CI on the impacted scope,
-   and opens the PR targeting `main`. CI runs again on PR.
-4. After merge, update local `main`.
-5. `sklp run publish` from clean local `main`.
-6. Publish only impacted services. Tags `YYYYMMDD-HHMM-<short-sha>`.
-7. ArgoCD / Image Updater handles rollout.
+## Feature / PR flow
+
+Use the `sklp flow` helpers (one worktree per feature):
+
+1. `sklp flow start <name>` — opens `feat/<name>` (`--branch` for in-place).
+2. `sklp flow end --pr` — diff vs `main`, run CI on impacted scope, open the PR.
+3. After merge, sync local `main`.
 
 Rules:
-- Never publish from a feature branch.
-- Never claim deployment success when only the image was pushed.
-- Treat `.sklp/tasks/ci.yaml` and `.sklp/tasks/publish.yaml` as the source of truth.
-
-## Development
-
-```bash
-cp .env.example .env
-sklp dev                   # boots core → web
-sklp dev --validate        # parse-only sanity check
-```
-
-Ports: core 4100, web 5273.
-
-Other entry points:
-- `sklp run build` — build `bin/app` and the web bundle
-- `sklp run ci` — lint + test impacted services
-- `sklp run secops` — gitleaks, semgrep, govulncheck, pnpm audit, trivy
-- `sklp run publish` — build, scan, push impacted Docker images (main only)
+- "Merge a PR" = merge on the GitHub remote via `gh`, then `git pull`. Never a
+  local merge; never push `main` directly without explicit approval.
+- Distribution is `go install github.com/lalternative/stack/cmd/sklp-create` —
+  there is no Docker image for this repo.
 
 ## CI / triggers — NO GitHub Actions
 
 Do NOT add `.github/workflows/*.yml` that drive `sklp run`. The skalpai UI is
-the CI control plane (remote dispatch). Local pre-push gates use git hooks:
-
-```bash
-git config core.hooksPath .githooks
-```
-
-## Container registry
-
-`rg.fr-par.scw.cloud/skaplai/<service>:<date>-<short-sha>`. Immutable tags
-only. No `latest`. Trivy gates HIGH/CRITICAL fixable findings.
+the CI control plane (remote dispatch). Local pre-push gates use git hooks.
