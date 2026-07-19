@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -18,6 +19,12 @@ import (
 var templateFS embed.FS
 
 const templateRoot = "template"
+
+// webOverlayRoot is the embedded overlay laid over the freshly-scaffolded web
+// app by overlayWeb. It lives under template/ so `go:embed all:template` ships
+// it, but extractTemplate must NOT drop it into the generated project as-is —
+// it belongs inside apps/web, not at apps/web-overlay.
+const webOverlayRoot = templateRoot + "/apps/web-overlay"
 
 var nameRe = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
 
@@ -79,6 +86,13 @@ func runStart(name string, assumeYes bool) error {
 	if err := scaffoldWeb(name); err != nil {
 		return fmt.Errorf("scaffold web app: %w", err)
 	}
+	// Lay the admin/auth overlay over the fresh TanStack app: the shared admin
+	// UI (@lalternative/admin) plus the thin routes, auth wiring and server
+	// endpoints that mount it. Done after scaffoldWeb (needs apps/web to exist)
+	// and before rename (so any placeholders are rewritten with the rest).
+	if err := overlayWeb(name); err != nil {
+		return fmt.Errorf("overlay web app: %w", err)
+	}
 	if err := rename(name); err != nil {
 		return fmt.Errorf("rename: %w", err)
 	}
@@ -128,10 +142,97 @@ func scaffoldWeb(name string) error {
 	if err := rewireWebPackageJSON(filepath.Join(abs, "package.json")); err != nil {
 		return err
 	}
-	if err := relaxWebTSConfig(filepath.Join(abs, "tsconfig.json")); err != nil {
+	// The lockfile is written later by overlayWeb, after patchWebDeps adds the
+	// admin/auth/pg dependencies — otherwise it would omit them and the stack
+	// CI's --frozen-lockfile install would fail.
+	return relaxWebTSConfig(filepath.Join(abs, "tsconfig.json"))
+}
+
+// webOverlayDeps are the dependencies the admin/auth overlay needs, added to
+// apps/web/package.json by patchWebDeps. @lalternative/{auth,admin} are the
+// shared packages; better-auth is their peer; pg backs the setup route's direct
+// SQL. Kept in one place so the versions are easy to bump.
+var webOverlayDeps = map[string]string{
+	"@lalternative/auth":  "^0.1.2",
+	"@lalternative/admin": "^0.1.0",
+	"better-auth":         "^1.6.11",
+	"pg":                  "^8.18.0",
+	"@types/pg":           "^8.16.0",
+}
+
+// overlayWeb lays the admin/auth overlay over the freshly-scaffolded web app:
+// it copies template/apps/web-overlay/** into apps/web/**, adds the overlay's
+// dependencies to package.json, then (re)writes the lockfile so it accounts for
+// them. Read straight from the embedded FS — the overlay is deliberately not
+// extracted into the project by extractTemplate.
+func overlayWeb(name string) error {
+	webDir := filepath.Join(name, "apps", "web")
+	err := fs.WalkDir(templateFS, webOverlayRoot, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel := strings.TrimPrefix(p, webOverlayRoot)
+		rel = strings.TrimPrefix(rel, "/")
+		if rel == "" {
+			return nil
+		}
+		target := filepath.Join(webDir, rel)
+		if d.IsDir() {
+			return os.MkdirAll(target, 0o755)
+		}
+		b, err := templateFS.ReadFile(p)
+		if err != nil {
+			return err
+		}
+		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			return err
+		}
+		return os.WriteFile(target, b, 0o644)
+	})
+	if err != nil {
+		return fmt.Errorf("copy overlay: %w", err)
+	}
+	if err := patchWebDeps(filepath.Join(webDir, "package.json")); err != nil {
 		return err
 	}
 	return writeWebLockfile(name)
+}
+
+// patchWebDeps adds webOverlayDeps to the web package.json's "dependencies".
+// The TanStack CLI always emits a "dependencies" block, so we insert right
+// after its opening brace — a textual edit (like rewireWebPackageJSON) rather
+// than a full JSON round-trip, to keep the CLI's formatting untouched.
+func patchWebDeps(path string) error {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	s := string(b)
+	// Deterministic order so the generated file is stable across runs.
+	keys := make([]string, 0, len(webOverlayDeps))
+	for k := range webOverlayDeps {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	var lines strings.Builder
+	for _, k := range keys {
+		if strings.Contains(s, `"`+k+`"`) {
+			continue // already present — don't duplicate
+		}
+		lines.WriteString(fmt.Sprintf("\n    %q: %q,", k, webOverlayDeps[k]))
+	}
+	if lines.Len() == 0 {
+		return nil
+	}
+	marker := `"dependencies": {`
+	i := strings.Index(s, marker)
+	if i < 0 {
+		return fmt.Errorf("no \"dependencies\" block in %s (TanStack CLI output changed?)", path)
+	}
+	at := i + len(marker)
+	s = s[:at] + lines.String() + s[at:]
+	return os.WriteFile(path, []byte(s), 0o644)
 }
 
 // writeWebLockfile generates the workspace pnpm-lock.yaml. The CLI runs with
@@ -183,9 +284,13 @@ func rewireWebPackageJSON(path string) error {
 		{`"preview": "vite preview"`, `"preview": "vite preview --port 5273"`},
 		// The stack CI runs `pnpm --filter @app/web typecheck`; the TanStack CLI
 		// ships `lint`/`test` but no typecheck script. Generate the route tree
-		// first — routeTree.gen.ts is not committed, so `tsc` alone fails on a
-		// fresh checkout with "Cannot find module './routeTree.gen'".
-		{`"lint": "eslint",`, "\"lint\": \"eslint\",\n    \"typecheck\": \"tsr generate && tsc --noEmit\","},
+		// first (it is not committed, so `tsc` alone fails with "Cannot find
+		// module './routeTree.gen'"). Use `vite build`, NOT `tsr generate`: the
+		// admin overlay's server routes (`server: { handlers }`) only typecheck
+		// when routeTree.gen.ts carries the `@tanstack/react-start` module
+		// augmentation, which the Start Vite plugin emits and the bare `tsr`
+		// CLI does not.
+		{`"lint": "eslint",`, "\"lint\": \"eslint\",\n    \"typecheck\": \"vite build && tsc --noEmit\","},
 	}
 	for _, r := range repl {
 		s = strings.Replace(s, r.from, r.to, 1)
@@ -282,6 +387,14 @@ func extractTemplate(fsys embed.FS, root, dst string) error {
 	return fs.WalkDir(fsys, root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
+		}
+		// The web overlay is copied into apps/web by overlayWeb, not extracted
+		// into the project as its own tree.
+		if p == webOverlayRoot || strings.HasPrefix(p, webOverlayRoot+"/") {
+			if d.IsDir() {
+				return fs.SkipDir
+			}
+			return nil
 		}
 		rel := strings.TrimPrefix(p, root)
 		rel = strings.TrimPrefix(rel, "/")
