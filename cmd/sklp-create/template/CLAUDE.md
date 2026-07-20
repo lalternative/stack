@@ -12,6 +12,10 @@ app starts with the full skalpai dev workflow + observability already wired.
 
 ## Architecture
 - DDD + CQRS per bounded context under `apps/core/<context>/` (see `example/`)
+- `account/` is a plain service (not CQRS): the core's account/auth surface —
+  auth is owned by the web (better-auth), so the core only verifies the JWT and
+  serves a few account actions (logout `DELETE /auth/session`). Grow it into the
+  DDD layout only if account state moves into the core.
 - Event-sourced via `github.com/lalternative/packages/go/eda`: aggregate
   (`ddd.BaseAggregateRoot` + `ddd.Raise`) → events → projection (read model) →
   typed command/query routers (`cqrs.Execute`/`cqrs.Ask`), wired with `di`.

@@ -15,11 +15,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/lalternative/packages/go/eda/pkg/consumer"
 	"github.com/labstack/echo/v4"
 	emw "github.com/labstack/echo/v4/middleware"
+	"github.com/lalternative/packages/go/eda/pkg/consumer"
 	"github.com/nats-io/nats.go"
 
+	"app/core/account"
 	"app/core/example"
 	exampleeventhandlers "app/core/example/application/event-handlers"
 	"app/core/health"
@@ -82,6 +83,11 @@ func main() {
 	e.Use(emw.Recover(), emw.RequestID(), observability.EchoMiddleware("core"))
 
 	health.Register(e)
+
+	// Account/auth endpoints (e.g. logout) are public: clearing the session
+	// cookie must work without a valid token, so they mount on the root Echo
+	// instance rather than under the RequireAuth-guarded /api/v1 group.
+	account.NewService(pool).RegisterRoutes(e)
 
 	// Protected API. The web app reverse-proxies browser requests to /api/v1/*
 	// verbatim (see apps/web routes/api/v1/$.ts). Every request carries the
