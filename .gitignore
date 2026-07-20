@@ -1,3 +1,5 @@
 bin/
-sklp-create
+# The compiled CLI binary at the repo root — anchored with a leading slash so it
+# does not also ignore the cmd/sklp-create/ package source and its template.
+/sklp-create
 .DS_Store
